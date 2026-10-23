@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "case-yyyy-mm-name",
+  "meta": {
+    "name": "案件名稱",
+    "title": "",
+    "team": "東臺灣搜救協會",
+    "reportDate": "",
+    "location": "",
+    "commandPost": "",
+    "assembly": [],
+    "dailyMeeting": "",
+    "updated": "",
+    "source": "東搜搜救紀錄 v1.1",
+    "notice": "搜救紀錄僅供搜救過程分析與檢討，因涉及個人資料及現場照片，請勿給予非搜救人員"
+  },
+  "report": "",
+  "subject": {
+    "name": "",
+    "nickname": "",
+    "gender": "",
+    "age": null,
+    "height": "",
+    "weight": "",
+    "hair": "",
+    "medical": "",
+    "phone": "",
+    "phoneOS": "",
+    "social": [],
+    "mapReading": "",
+    "styles": [],
+    "experience": "",
+    "notes": []
+  },
+  "reporter": { "name": "", "relation": "", "phone": "", "line": "" },
+  "clothing": [],
+  "gear": [],
+  "ipp": { "lastSeen": "", "likelyArea": "", "lastContact": "", "contacts": [], "lat": null, "lng": null },
+  "itinerary": [],
+  "retreatPlan": "",
+  "area": { "signal": "", "weather": "", "localContacts": [], "bbox": null, "markers": [] },
+  "teams": [],
+  "radio": { "public": "", "team": "" },
+  "checklist": [
+    { "group": "個人裝備", "items": ["頭燈＋備用電池", "保暖衣物", "雨衣雨褲", "水與行動糧", "手機離線地圖已下載", "行動電源"] },
+    { "group": "公裝", "items": ["無線電（公頻／小隊頻已設定）", "急救包", "天幕"] }
+  ],
+  "log": [],
+  "found": null,
+  "debrief": null
+}

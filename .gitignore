@@ -1,0 +1,6 @@
+# 含個資的案件檔，絕不提交或部署
+private/
+node_modules/
+.DS_Store
+test-data/
+.claude/
