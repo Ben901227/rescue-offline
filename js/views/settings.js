@@ -31,6 +31,15 @@ export async function render(el, app) {
       <h1 style="font-size:1.3rem">設定</h1>
       <section class="card" id="clCard"></section>
       <section class="card" id="driveCard">${driveSettingsHtml()}</section>
+      <section class="card" id="themeCard">
+        <h2>外觀</h2>
+        <div class="seg" role="group" aria-label="顯示模式">
+          <button type="button" class="btn small" data-theme-opt="auto">自動</button>
+          <button type="button" class="btn small" data-theme-opt="light">淺色</button>
+          <button type="button" class="btn small" data-theme-opt="dark">深色</button>
+        </div>
+        <p class="muted small" style="margin-top:6px">「自動」跟著手機的深色模式設定。晚上或省電時建議用深色。</p>
+      </section>
       <section class="card" id="logCard">
         <h2>使用記錄</h2>
         <p class="muted small">記下錯誤、同步與上傳結果、更新等，只存在這支手機。遇到問題時按「複製記錄」，貼到 LINE 傳給資料組。</p>
@@ -72,6 +81,25 @@ export async function render(el, app) {
     await applyUpdate();
   };
   runCheck();
+
+  // 外觀：存在這支手機（localStorage），index.html 開頭會先套用
+  const themeBtns = el.querySelectorAll('[data-theme-opt]');
+  const currentTheme = () => document.documentElement.dataset.theme || 'auto';
+  const markTheme = () => themeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeOpt === currentTheme())));
+  themeBtns.forEach((b) => {
+    b.onclick = () => {
+      const t = b.dataset.themeOpt;
+      if (t === 'auto') delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = t;
+      try {
+        t === 'auto' ? localStorage.removeItem('theme') : localStorage.setItem('theme', t);
+      } catch {
+        /* 私密瀏覽時存不了，只套用到這次 */
+      }
+      markTheme();
+    };
+  });
+  markTheme();
 
   // 使用記錄
   let logFilter = 'all';
