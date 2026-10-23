@@ -24,7 +24,7 @@ export async function render(el, app) {
       <p class="muted small">只有名單上的 Google 帳號能登入看到案件。移除後，對方的手機下次連線時就讀不到，並會清除手機上的雲端資料。</p>
       <form id="addForm" class="stack" style="margin-top:10px">
         <div class="fld"><label for="mEmail">Gmail</label><input type="text" id="mEmail" inputmode="email" autocomplete="off" placeholder="example@gmail.com"></div>
-        <div class="fld"><label for="mName">名字（選填）</label><input type="text" id="mName" placeholder="例如：王小明"></div>
+        <div class="fld"><label for="mName">名字（選填）</label><input type="text" id="mName" placeholder="例如：王小明"><small>只用來在這份名單上認出是誰，不影響登入與權限</small></div>
         <div class="seg" role="group" aria-label="角色">
           <button type="button" class="btn small" data-role="member" aria-pressed="true">隊員</button>
           <button type="button" class="btn small" data-role="admin" aria-pressed="false">管理員</button>
