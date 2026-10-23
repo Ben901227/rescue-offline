@@ -28,7 +28,8 @@
 1. Google Cloud 專案建立 OAuth 用戶端 ID（網頁應用程式），已授權來源加入部署網址與 `http://localhost:5173`。同意畫面只需要 `openid`、`email`、`profile`。
 2. 在同一個專案啟用 Firebase：Authentication 開啟 Google 登入；Firestore 建立在 `asia-east1`（正式版模式）。
 3. 把 Firebase 網頁設定與用戶端 ID 填進 [js/config.js](js/config.js)；第一位管理員的 email 同時寫在 `js/config.js` 和 `firestore.rules`。
-4. 部署權限規則：
+4. Firebase 網頁金鑰（`js/config.js` 的 `apiKey`）是公開識別碼，不是密碼，網頁一定看得到；已在 Google Cloud →「API 和服務」→「憑證」→「Browser key (auto created by Firebase)」限制只接受這些網站：`https://ben901227.github.io/*`、`http://localhost:5173/*`、`https://escue-offline-test.firebaseapp.com/*`。**換網址時要一起加進去**，否則 App 會連不上。
+5. 部署權限規則：
 
 ```bash
 npx firebase deploy --only firestore:rules
