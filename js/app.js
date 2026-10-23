@@ -50,7 +50,8 @@ function renderHeader() {
   }
 }
 
-async function route() {
+async function route({ keepScroll = false } = {}) {
+  const y = window.scrollY; // 要在清空畫面前記下，清空後高度變小會被歸零
   const tab = (location.hash.match(/^#\/(\w+)/) || [])[1];
   const name = views[tab] ? tab : 'summary';
   active?.destroy?.();
@@ -64,6 +65,7 @@ async function route() {
     return;
   }
   await active.render(viewEl, app);
+  if (keepScroll) window.scrollTo(0, y);
 }
 
 function updateNet() {
@@ -129,13 +131,14 @@ await app.reload();
 // 雲端：登入狀態與資料變動時，重畫不會打斷操作的頁面（地圖、編輯中的頁面不重畫）
 let currentTab = () => (location.hash.match(/^#\/(\w+)/) || [])[1] || 'summary';
 const SAFE_RERENDER = ['summary', 'tasks', 'cases'];
-window.addEventListener('cloud-data', () => SAFE_RERENDER.includes(currentTab()) && route());
+// 背景更新時保持捲動位置，不要把正在看的人跳回頂端
+window.addEventListener('cloud-data', () => SAFE_RERENDER.includes(currentTab()) && route({ keepScroll: true }));
 let lastCloud = '';
 cloud.onChange((s) => {
   const key = `${s.user?.email}|${s.role}|${s.status}`;
   if (key === lastCloud) return;
   lastCloud = key;
-  if (currentTab() === 'cases') route();
+  if (currentTab() === 'cases') route({ keepScroll: true });
 });
 cloud.start(app);
 

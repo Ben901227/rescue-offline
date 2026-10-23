@@ -8,6 +8,7 @@ import { copyText } from '../ui.js';
 import { db } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { saveAndUpload, state as cloud, signOut, isAdmin } from '../cloud.js';
+import { listPhotos, thumbsHtml, bindThumbs, pickAndUpload, releaseUrls } from '../photos.js';
 
 const newId = () => `i${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -29,6 +30,15 @@ export async function render(el, app) {
   el.innerHTML = `
     <div class="stack">
       <h1 style="font-size:1.3rem">設定</h1>
+      <section class="card" id="subjectPhotoCard" ${c && cloud.user ? '' : 'hidden'}>
+        <h2>失蹤者照片${c ? `：${esc(c.meta.name)}` : ''}</h2>
+        <p class="muted small">會顯示在摘要頁「失聯者」區塊的最上面，方便搜救時比對。上傳前會自動壓縮。</p>
+        <div id="subjectPhotoList" style="margin-top:10px"></div>
+        <div class="btn-row" style="margin-top:8px">
+          <button type="button" class="btn primary" id="subjectUpload">${icon('camera', { size: 18 })}上傳失蹤者照片</button>
+          ${c ? `<a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}&sec=photos">管理所有照片</a>` : ''}
+        </div>
+      </section>
       <section class="card" id="clCard"></section>
       <section class="card" id="accountCard">
         <h2>帳號</h2>
@@ -161,6 +171,21 @@ export async function render(el, app) {
   };
   drawLogs();
 
+  // 失蹤者照片
+  if (c && cloud.user) {
+    const drawSubject = async () => {
+      const list = (await listPhotos(c.id)).filter((p) => p.kind === 'subject');
+      const box = el.querySelector('#subjectPhotoList');
+      if (!box) return;
+      box.innerHTML = thumbsHtml(list, { empty: '還沒有失蹤者照片' });
+      bindThumbs(box, list);
+    };
+    el.querySelector('#subjectUpload').onclick = async () => {
+      if (await pickAndUpload(c.id, 'subject')) drawSubject();
+    };
+    drawSubject();
+  }
+
   const card = el.querySelector('#clCard');
   if (!c) {
     card.innerHTML = '<h2>裝備清單</h2><p class="muted">請先匯入或選擇案件。</p>';
@@ -178,7 +203,7 @@ export async function render(el, app) {
   const draw = () => {
     card.innerHTML = `
       <h2>裝備清單：${esc(c.meta.name)}</h2>
-      <p class="muted small">依案件調整裝備清單，儲存後會同時上傳到 Google Drive，全隊同步即可看到。</p>
+      <p class="muted small">依案件調整裝備清單，儲存後會同時上傳到雲端，全隊會自動收到。</p>
       <div class="btn-row" style="margin-top:10px">
         <select id="copyFrom" style="flex:1">
           <option value="">從範本或其他案件複製…</option>
@@ -301,4 +326,8 @@ export async function render(el, app) {
     b.disabled = false;
     toast(r.uploaded ? '已儲存並上傳，任務頁已更新' : r.reason, r.uploaded ? 2400 : 6000);
   });
+}
+
+export function destroy() {
+  releaseUrls();
 }

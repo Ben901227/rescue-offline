@@ -2,7 +2,7 @@ import { esc, has, nl2br } from '../ui.js';
 import { icon } from '../icons.js';
 import { caseStatus } from '../lib/caseSchema.js';
 import { wgs84ToTwd97 } from '../lib/twd97.js';
-import { listPhotos, thumbsHtml, bindThumbs, releaseUrls } from '../photos.js';
+import { listPhotos, thumbsHtml, bindThumbs, releaseUrls, photoUrl, openLightbox, pickAndUpload } from '../photos.js';
 import { state as cloud } from '../cloud.js';
 
 const telLink = (phone) => `<a class="btn small primary" href="tel:${esc(phone.replace(/[^\d+]/g, ''))}">撥打</a>`;
@@ -21,11 +21,28 @@ const folds = (() => {
   }
 })();
 
+// 每個區塊對應到編輯頁要打開的分區
+const EDIT_SEC = {
+  status: 'basic',
+  found: 'found',
+  report: 'report',
+  subject: 'subject,clothing',
+  ipp: 'ipp',
+  contacts: 'ipp,reporter,area',
+  itinerary: 'itinerary',
+  searchlog: 'log',
+  timeline: 'itinerary,log',
+  area: 'area',
+  photos: 'photos',
+};
+let currentId = '';
+
 function fold(key, title, body, { cls = '', style = '', extra = '' } = {}) {
   const open = folds[key] !== false;
+  const edit = EDIT_SEC[key] ? `<a class="btn small fold-edit" href="#/edit?id=${encodeURIComponent(currentId)}&sec=${EDIT_SEC[key]}" aria-label="編輯「${title}」">編輯</a>` : '';
   return `
     <details class="card fold ${cls}" data-fold="${key}" ${style ? `style="${style}"` : ''} ${open ? 'open' : ''}>
-      <summary><h2>${title}${extra}</h2></summary>
+      <summary><h2>${title}${extra}</h2>${edit}</summary>
       <div class="fold-body">${body}</div>
     </details>`;
 }
@@ -214,6 +231,7 @@ function areaCard(c) {
 export function render(el, app) {
   const c = app.current;
   if (!c) return;
+  currentId = c.id;
   el.innerHTML = `
     <div class="stack">
       ${c.meta.notice ? `<div class="banner" role="note">${icon('alert')}<span>${esc(c.meta.notice)}</span></div>` : ''}
@@ -271,9 +289,20 @@ async function loadPhotos(wrap, c) {
   const subject = list.filter((p) => p.kind === 'subject');
   const scene = list.filter((p) => p.kind !== 'subject');
   const sp = wrap.querySelector('#subjectPhotos');
-  if (sp && subject.length) {
-    sp.innerHTML = thumbsHtml(subject);
+  if (sp) {
+    const [main, ...more] = subject;
+    sp.innerHTML = main
+      ? `<div class="portrait-row">
+          <button type="button" class="portrait" data-photo="${esc(main.id)}" aria-label="放大失蹤者照片"><img src="${photoUrl(main, 'image')}" alt="${esc(main.caption || '失蹤者照片')}"></button>
+          ${more.length ? `<div class="portrait-more">${thumbsHtml(more)}</div>` : ''}
+        </div>
+        <button type="button" class="btn small" id="addSubjectPhoto">${icon('camera', { size: 18 })}再加一張</button>`
+      : `<div class="portrait-empty">${icon('camera', { size: 28 })}<span>還沒有失蹤者照片</span>
+          <button type="button" class="btn small primary" id="addSubjectPhoto">上傳失蹤者照片</button></div>`;
     bindThumbs(sp, subject);
+    sp.querySelector('#addSubjectPhoto')?.addEventListener('click', async () => {
+      if (await pickAndUpload(c.id, 'subject')) loadPhotos(wrap, c);
+    });
   }
   const sc = wrap.querySelector('#scenePhotos');
   if (sc) {

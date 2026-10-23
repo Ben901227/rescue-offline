@@ -10,8 +10,7 @@ import { parseCoordinate, wgs84ToTwd97 } from '../lib/twd97.js';
 import { pickPoint, pickBounds } from '../mapPicker.js';
 import { TYPE_LABEL } from '../markers.js';
 import { saveAndUpload, state as cloud } from '../cloud.js';
-import { addPhoto, listPhotos, deletePhoto, photoUrl, openLightbox, KIND_LABEL, releaseUrls } from '../photos.js';
-import { pickFile } from '../ui.js';
+import { listPhotos, deletePhoto, photoUrl, openLightbox, KIND_LABEL, releaseUrls, pickAndUpload } from '../photos.js';
 
 const MARKER_TYPES = ['ipp', 'camp', 'cp', 'poi'];
 const DRAFT_KEY = 'editorDraft';
@@ -19,6 +18,7 @@ const DRAFT_KEY = 'editorDraft';
 // type: text | textarea | number | date | select | lines（一行一項）| coord | bbox | repeat
 const SECTIONS = [
   {
+    key: 'basic',
     title: '基本資料',
     fields: [
       { path: 'meta.name', label: '案件短名', hint: '顯示在頂部，例如：牡丹岩', required: true },
@@ -33,8 +33,9 @@ const SECTIONS = [
       { path: 'meta.notice', label: '頂部提醒文字', type: 'textarea' },
     ],
   },
-  { title: '通報事由', fields: [{ path: 'report', label: '哪裡、何時、原因、什麼、如何發生', type: 'textarea' }] },
+  { key: 'report', title: '通報事由', fields: [{ path: 'report', label: '哪裡、何時、原因、什麼、如何發生', type: 'textarea' }] },
   {
+    key: 'subject',
     title: '失聯者',
     fields: [
       { path: 'subject.name', label: '姓名' },
@@ -55,6 +56,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'reporter',
     title: '通報人',
     fields: [
       { path: 'reporter.name', label: '姓名' },
@@ -64,6 +66,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'clothing',
     title: '穿著與裝備',
     fields: [
       { path: 'clothing', label: '當天穿著', type: 'repeat', add: '新增穿著', fields: [{ path: 'part', label: '部位', hint: '頭／上身／下身／腳' }, { path: 'item', label: '物品' }, { path: 'desc', label: '顏色與品牌' }] },
@@ -71,6 +74,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'ipp',
     title: '最後已知點（IPP）',
     fields: [
       { path: 'ipp.lastSeen', label: '最後目擊時間／地點', type: 'textarea' },
@@ -81,6 +85,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'itinerary',
     title: '原定行程',
     fields: [
       { path: 'itinerary', label: '每日行程', type: 'repeat', add: '新增一天', fields: [{ path: 'day', label: '天', hint: 'D1' }, { path: 'date', label: '日期', hint: '10/09' }, { path: 'plan', label: '行程', type: 'textarea' }] },
@@ -88,6 +93,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'area',
     title: '案件所在地與地圖',
     fields: [
       { path: 'area.bbox', label: '搜索範圍', type: 'bbox' },
@@ -98,6 +104,7 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'teams',
     title: '任務分組與無線電',
     fields: [
       { path: 'radio.public', label: '公頻' },
@@ -106,12 +113,14 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'log',
     title: '每日搜救紀錄',
     fields: [
       { path: 'log', label: '紀錄', type: 'repeat', add: '新增一天', fields: [{ path: 'date', label: '日期', hint: '10/11' }, { path: 'personnel', label: '出勤人員' }, { path: 'entries', label: '搜救紀錄', type: 'lines', hint: '一行一則' }, { path: 'meeting', label: '晚會內容', type: 'textarea' }] },
     ],
   },
   {
+    key: 'found',
     title: '發現失聯者',
     found: true,
     fields: [
@@ -215,7 +224,9 @@ export async function render(el, app) {
   const savedDraft = await kv.get(DRAFT_KEY);
   let draft = structuredClone(original || blankCase(template));
   delete draft._sync;
-  const openSections = new Set([0]);
+  // 從摘要頁的「編輯」按鈕進來時，打開對應的區塊（?sec=subject,clothing），照片則捲到照片區
+  const wanted = (params.get('sec') || '').split(',').filter(Boolean);
+  const openSections = new Set(wanted.length ? SECTIONS.map((sec, i) => (wanted.includes(sec.key) ? i : -1)).filter((i) => i >= 0) : [0]);
   let restoreOffer = savedDraft?.key === draftKey && JSON.stringify(savedDraft.data) !== JSON.stringify(draft);
 
 
@@ -290,6 +301,12 @@ export async function render(el, app) {
   }
 
   draw();
+  if (wanted.length) {
+    requestAnimationFrame(() => {
+      const target = wanted[0] === 'photos' ? root.querySelector('#photoCard') : root.querySelector(`details[data-sec="${[...openSections][0]}"]`);
+      target?.scrollIntoView({ block: 'start' });
+    });
+  }
   root.addEventListener('click', async (e) => {
     const pb = e.target.closest('[data-photo-add],[data-photo-view],[data-photo-del]');
     if (!pb) return;
@@ -303,21 +320,10 @@ export async function render(el, app) {
       }
       return drawPhotos();
     }
-    const kind = pb.dataset.photoAdd;
-    const file = await pickFile('image/*');
-    if (!file) return;
-    const caption = prompt('照片說明（可留空）', kind === 'subject' ? '失聯者照片' : '') ?? '';
     pb.disabled = true;
-    toast('壓縮並上傳中…', 4000);
-    try {
-      await addPhoto(original.id, file, { kind, caption });
-      toast(navigator.onLine ? '照片已上傳' : '照片已存在手機，連線後上傳');
-    } catch (err) {
-      toast(`照片上傳失敗：${err.message}`, 5000);
-    } finally {
-      pb.disabled = false;
-      drawPhotos();
-    }
+    await pickAndUpload(original.id, pb.dataset.photoAdd);
+    pb.disabled = false;
+    drawPhotos();
   });
 
   root.addEventListener('toggle', (e) => {

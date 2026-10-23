@@ -1,7 +1,7 @@
 // 照片：手機上先壓縮（長邊 1280px、約 300KB 內＋縮圖），存在 Firestore 的 cases/{id}/photos。
 // 看過或同步過的照片留在手機的離線快取，沒網路也能看。
 import { fs, email, state } from './cloud.js';
-import { esc } from './ui.js';
+import { esc, pickFile, toast } from './ui.js';
 import * as log from './log.js';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, Bytes } from '../vendor/firebase/firebase.js';
 
@@ -154,4 +154,32 @@ export function bindThumbs(container, list) {
     const p = list.find((x) => x.id === b.dataset.photo);
     if (p) openLightbox(p);
   });
+}
+
+// 選照片（或拍照）→ 壓縮 → 上傳；回傳是否有上傳
+export async function pickAndUpload(caseId, kind, { caption, lat = null, lng = null, camera = false } = {}) {
+  let file;
+  if (camera) {
+    file = await new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('capture', 'environment');
+      input.onchange = () => resolve(input.files[0] || null);
+      input.click();
+    });
+  } else {
+    file = await pickFile('image/*');
+  }
+  if (!file) return false;
+  const text = prompt('照片說明（可留空）', caption ?? (kind === 'subject' ? '失聯者照片' : '')) ?? '';
+  toast('壓縮並上傳中…', 4000);
+  try {
+    await addPhoto(caseId, file, { kind, caption: text, lat, lng });
+    toast(navigator.onLine ? '照片已上傳' : '照片已存在手機，連線後上傳');
+    return true;
+  } catch (err) {
+    toast(`照片上傳失敗：${err.message}`, 5000);
+    return false;
+  }
 }
