@@ -10,7 +10,7 @@ import { parseCoordinate, wgs84ToTwd97 } from '../lib/twd97.js';
 import { pickPoint, pickBounds } from '../mapPicker.js';
 import { TYPE_LABEL } from '../markers.js';
 import { saveAndUpload, state as cloud } from '../cloud.js';
-import { listPhotos, deletePhoto, photoUrl, openLightbox, KIND_LABEL, releaseUrls, pickAndUpload } from '../photos.js';
+import { listPhotos, deletePhoto, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 
 const MARKER_TYPES = ['ipp', 'camp', 'cp', 'poi'];
 const DRAFT_KEY = 'editorDraft';
@@ -256,6 +256,10 @@ export async function render(el, app) {
             <summary><h2 style="display:inline">${esc(s.title)}</h2></summary>
             <div style="margin-top:10px">
               ${s.found ? `<label class="check" style="border:0"><input type="checkbox" id="foundToggle" ${draft.found ? 'checked' : ''}><span>已尋獲失聯者</span></label>` : ''}
+              ${s.key === 'subject' && original && cloud.user ? `<div class="fld"><label>失蹤者照片</label>
+                <ul class="photo-admin" id="subjectPhotoList"><li class="muted small">讀取中…</li></ul>
+                <button type="button" class="btn small" data-photo-add="subject" style="margin-top:6px">${icon('camera', { size: 18 })}上傳失蹤者照片</button>
+                <small>顯示在摘要「失聯者」區塊最上面。上傳前會自動壓縮。</small></div>` : ''}
               ${s.found && !draft.found ? '' : s.fields.map((f) => fieldHtml(f, draft)).join('')}
             </div>
           </details>`
@@ -266,11 +270,10 @@ export async function render(el, app) {
           <p class="muted small" style="margin-top:4px">${original ? '<a href="#/settings">到設定頁編輯裝備清單</a>' : '新案件會套用東搜預設清單，儲存後可到設定頁調整。'}</p>
         </section>
         ${original && cloud.user ? `<section class="card" id="photoCard">
-          <h2>照片</h2>
-          <p class="muted small">失聯者照片會顯示在摘要的「失聯者」區塊；現場照片另列一區。上傳前會自動壓縮，離線時先存在手機，連線後上傳。</p>
+          <h2>現場照片</h2>
+          <p class="muted small">顯示在摘要的「現場照片」區塊（失蹤者照片在上方「失聯者」區）。上傳前會自動壓縮，離線時先存在手機，連線後上傳。也可以在地圖上按住某個位置拍照，照片會標在那裡。</p>
           <div class="btn-row" style="margin-top:10px">
-            <button type="button" class="btn" data-photo-add="subject">${icon('plus', { size: 18 })}失聯者照片</button>
-            <button type="button" class="btn" data-photo-add="scene">${icon('plus', { size: 18 })}現場照片</button>
+            <button type="button" class="btn" data-photo-add="scene">${icon('camera', { size: 18 })}上傳現場照片</button>
           </div>
           <ul class="photo-admin" id="photoList"><li class="muted small">讀取中…</li></ul>
         </section>` : ''}
@@ -284,20 +287,27 @@ export async function render(el, app) {
   };
 
   let photos = [];
+  const photoItem = (p) => `<li><button type="button" class="thumb" data-photo-view="${esc(p.id)}" aria-label="放大"><img src="${photoUrl(p)}" alt=""></button>
+              <span style="flex:1;min-width:0">${esc(p.caption || '')}
+              <br><span class="muted small">${esc((p.created || '').slice(0, 10))}・${esc((p.by || '').split('@')[0])}</span></span>
+              <button type="button" class="btn small danger" data-photo-del="${esc(p.id)}" aria-label="刪除照片">${icon('x')}</button></li>`;
+
   async function drawPhotos() {
+    if (!original || !cloud.user) return;
+    photos = await listPhotos(original.id);
+    const subj = root.querySelector('#subjectPhotoList');
+    if (subj) {
+      const list = photos.filter((p) => p.kind === 'subject');
+      subj.innerHTML = list.length ? list.map(photoItem).join('') : '<li class="muted small">還沒有失蹤者照片</li>';
+    }
     const ul = root.querySelector('#photoList');
     if (!ul) return;
-    photos = await listPhotos(original.id);
-    ul.innerHTML = photos.length
-      ? photos
-          .map(
-            (p) => `<li><button type="button" class="thumb" data-photo-view="${esc(p.id)}" aria-label="放大"><img src="${photoUrl(p)}" alt=""></button>
-              <span style="flex:1;min-width:0"><span class="chip ${p.kind === 'subject' ? 'warn' : 'muted'}">${KIND_LABEL[p.kind] || ''}</span> ${esc(p.caption || '')}
-              <br><span class="muted small">${esc((p.created || '').slice(0, 10))}・${esc((p.by || '').split('@')[0])}</span></span>
-              <button type="button" class="btn small danger" data-photo-del="${esc(p.id)}" aria-label="刪除照片">${icon('x')}</button></li>`
-          )
+    const scene = photos.filter((p) => p.kind !== 'subject');
+    ul.innerHTML = scene.length
+      ? scene
+          .map(photoItem)
           .join('')
-      : '<li class="muted small">還沒有照片</li>';
+      : '<li class="muted small">還沒有現場照片</li>';
   }
 
   draw();

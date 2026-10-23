@@ -1,7 +1,7 @@
 // 照片：手機上先壓縮（長邊 1280px、約 300KB 內＋縮圖），存在 Firestore 的 cases/{id}/photos。
 // 看過或同步過的照片留在手機的離線快取，沒網路也能看。
 import { fs, email, state } from './cloud.js';
-import { esc, pickFile, toast } from './ui.js';
+import { esc, pickFile, toast, ask } from './ui.js';
 import * as log from './log.js';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, Bytes } from '../vendor/firebase/firebase.js';
 
@@ -172,7 +172,8 @@ export async function pickAndUpload(caseId, kind, { caption, lat = null, lng = n
     file = await pickFile('image/*');
   }
   if (!file) return false;
-  const text = prompt('照片說明（可留空）', caption ?? (kind === 'subject' ? '失聯者照片' : '')) ?? '';
+  const text = await ask('照片說明（可留空）', { value: caption ?? (kind === 'subject' ? '失聯者照片' : ''), placeholder: '例如：發現腳印', ok: '上傳' });
+  if (text === null) return false;
   toast('壓縮並上傳中…', 4000);
   try {
     await addPhoto(caseId, file, { kind, caption: text, lat, lng });

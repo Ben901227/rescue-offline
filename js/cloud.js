@@ -89,11 +89,14 @@ export function signIn() {
   return tokenP.then(async (accessToken) => {
     const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(null, accessToken));
     log.info('登入', '已登入', cred.user.email);
+    kv.set('cloudLast', { email: cred.user.email, at: new Date().toISOString() }).catch(() => {});
     return cred.user;
   });
 }
 
 export async function signOut({ wipe = true } = {}) {
+  window.dispatchEvent(new Event('cloud-signout'));
+  await kv.del('cloudLast').catch(() => {});
   stopListeners();
   await fbSignOut(auth).catch(() => {});
   if (wipe) await wipeCloudData('已登出');
@@ -169,7 +172,8 @@ function listenRoutes(caseId) {
 function startCaseListener() {
   caseUnsub = onSnapshot(
     collection(fs, 'cases'),
-    { includeMetadataChanges: false },
+    // 也要收「伺服器確認資料沒變」的通知，否則先讀到手機快取後狀態會一直停在「連線中」
+    { includeMetadataChanges: true },
     async (snap) => {
       for (const ch of snap.docChanges()) {
         const id = ch.doc.id;
@@ -188,7 +192,7 @@ function startCaseListener() {
         listenRoutes(id);
         await writeMirror(id);
       }
-      if (!snap.metadata.fromCache) {
+      if (!snap.metadata.fromCache && state.status !== 'synced') {
         setState({ status: 'synced', error: null, lastSync: new Date().toISOString() });
         kv.set('cloudLast', { email: email(), at: new Date().toISOString() }).catch(() => {});
         maybeUploadLogs();
@@ -230,7 +234,15 @@ function startListeners() {
 // App 啟動時呼叫一次
 export function start(appState) {
   app = appState;
-  onAuthStateChanged(auth, (user) => {
+  let explicitSignOut = false;
+  window.addEventListener('cloud-signout', () => (explicitSignOut = true));
+  onAuthStateChanged(auth, async (user) => {
+    // 之前登入過、這次沒按登出卻變成未登入：記下來方便追查
+    const last = await kv.get('cloudLast').catch(() => null);
+    if (!user && last?.email && !explicitSignOut) {
+      log.warn('登入', '登入狀態遺失，需要重新登入', `上次登入 ${last.email}・${navigator.onLine ? '連線中' : '離線'}`);
+      kv.del('cloudLast').catch(() => {});
+    }
     setState({ user, role: null, status: user ? 'connecting' : 'signed-out', error: null });
     if (user) startListeners();
     else stopListeners();
@@ -296,6 +308,7 @@ export async function syncNow() {
   if (!state.user) throw new Error('請先登入');
   if (!navigator.onLine) throw new Error('需要網路才能同步');
   const snap = await getDocsFromServer(collection(fs, 'cases'));
+  setState({ status: 'synced', error: null, lastSync: new Date().toISOString() });
   await maybeUploadLogs(true);
   return snap.size;
 }

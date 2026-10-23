@@ -2,13 +2,9 @@ import { esc, toast } from '../ui.js';
 import { icon } from '../icons.js';
 import { APP_VERSION, APP_CHANNEL, APP_DATE } from '../version.js';
 import { checkUpdate, applyUpdate } from '../update.js';
-import { readLogs, clearLogs, reportText } from '../log.js';
-import { fmtStamp, LEVEL_LABEL } from '../lib/logFormat.js';
-import { copyText } from '../ui.js';
 import { db } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { saveAndUpload, state as cloud, signOut, isAdmin } from '../cloud.js';
-import { listPhotos, thumbsHtml, bindThumbs, pickAndUpload, releaseUrls } from '../photos.js';
 
 const newId = () => `i${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -30,22 +26,18 @@ export async function render(el, app) {
   el.innerHTML = `
     <div class="stack">
       <h1 style="font-size:1.3rem">設定</h1>
-      <section class="card" id="subjectPhotoCard" ${c && cloud.user ? '' : 'hidden'}>
-        <h2>失蹤者照片${c ? `：${esc(c.meta.name)}` : ''}</h2>
-        <p class="muted small">會顯示在摘要頁「失聯者」區塊的最上面，方便搜救時比對。上傳前會自動壓縮。</p>
-        <div id="subjectPhotoList" style="margin-top:10px"></div>
-        <div class="btn-row" style="margin-top:8px">
-          <button type="button" class="btn primary" id="subjectUpload">${icon('camera', { size: 18 })}上傳失蹤者照片</button>
-          ${c ? `<a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}&sec=photos">管理所有照片</a>` : ''}
-        </div>
-      </section>
+
+      <h2 class="settings-group">目前案件${c ? `：${esc(c.meta.name)}` : ''}</h2>
+      ${c ? `<div class="btn-row"><a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a><a class="btn" href="#/cases">切換案件</a></div>` : ''}
       <section class="card" id="clCard"></section>
+
+      <h2 class="settings-group">一般設定</h2>
       <section class="card" id="accountCard">
         <h2>帳號</h2>
         <p>${cloud.user ? `目前登入：<b>${esc(cloud.user.email)}</b>${cloud.role ? ` <span class="chip ${cloud.role === 'admin' ? 'warn' : 'muted'}">${cloud.role === 'admin' ? '管理員' : '隊員'}</span>` : ''}` : '尚未登入（到「案件」頁登入）'}</p>
         <p class="muted small" style="margin-top:4px">登入時只分享 email，App 不會存取你的 Google 雲端硬碟。</p>
         <div class="btn-row" style="margin-top:10px">
-          ${isAdmin() ? `<a class="btn" href="#/admin">${icon('settings')}管理成員與記錄</a>` : ''}
+          ${isAdmin() ? `<a class="btn" href="#/admin">${icon('settings')}管理成員與使用記錄</a>` : ''}
           <button class="btn danger" id="signOutBtn" ${cloud.user ? '' : 'disabled'}>登出</button>
         </div>
       </section>
@@ -57,20 +49,6 @@ export async function render(el, app) {
           <button type="button" class="btn small" data-theme-opt="dark">深色</button>
         </div>
         <p class="muted small" style="margin-top:6px">「自動」跟著手機的深色模式設定。晚上或省電時建議用深色。</p>
-      </section>
-      <section class="card" id="logCard">
-        <h2>使用記錄</h2>
-        <p class="muted small">記下錯誤、同步與上傳結果、更新等。每次「同步」時會一併上傳給資料組（Google 雲端硬碟的 logs 資料夾）；急的話也可以按「複製記錄」貼到 LINE。</p>
-        <div class="seg" role="group" aria-label="顯示哪些記錄" style="margin-top:10px">
-          <button type="button" class="btn small" data-logf="all" aria-pressed="true">全部</button>
-          <button type="button" class="btn small" data-logf="problem" aria-pressed="false">只看問題</button>
-        </div>
-        <ul class="log-list" id="logList" aria-live="polite"></ul>
-        <button type="button" class="btn small hidden" id="logMore" style="width:100%;margin-top:8px">顯示更多</button>
-        <div class="btn-row" style="margin-top:10px">
-          <button type="button" class="btn primary" id="logCopy">複製記錄</button>
-          <button type="button" class="btn danger" id="logClear">清除記錄</button>
-        </div>
       </section>
       <section class="card" id="verCard">
         <h2>App 版本</h2>
@@ -128,63 +106,6 @@ export async function render(el, app) {
     };
   });
   markTheme();
-
-  // 使用記錄
-  let logFilter = 'all';
-  let logLimit = 30;
-  const logList = el.querySelector('#logList');
-  let report = ''; // 先準備好，按「複製」時才能在同一個點擊內寫入剪貼簿（iOS 要求）
-  const drawLogs = async () => {
-    const all = await readLogs();
-    report = await reportText();
-    const rows = logFilter === 'problem' ? all.filter((e) => e.level !== 'info') : all;
-    logList.innerHTML = rows.length
-      ? rows
-          .slice(0, logLimit)
-          .map(
-            (e) => `<li class="log-${e.level}">
-              <div class="log-head"><span class="chip ${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : 'muted'}">${LEVEL_LABEL[e.level]}</span><b>${esc(e.cat)}</b><time class="muted small">${fmtStamp(e.t)}</time></div>
-              <div>${esc(e.msg)}</div>${e.detail ? `<div class="muted small">${esc(e.detail)}</div>` : ''}
-            </li>`
-          )
-          .join('')
-      : `<li class="muted">${logFilter === 'problem' ? '沒有錯誤或需要注意的記錄' : '還沒有記錄'}</li>`;
-    el.querySelector('#logMore').classList.toggle('hidden', rows.length <= logLimit);
-  };
-  el.querySelectorAll('[data-logf]').forEach((b) => {
-    b.onclick = () => {
-      logFilter = b.dataset.logf;
-      logLimit = 30;
-      el.querySelectorAll('[data-logf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      drawLogs();
-    };
-  });
-  el.querySelector('#logMore').onclick = () => {
-    logLimit += 50;
-    drawLogs();
-  };
-  el.querySelector('#logCopy').onclick = () => copyText(report);
-  el.querySelector('#logClear').onclick = async () => {
-    if (!confirm('清除這支手機上的所有使用記錄？')) return;
-    await clearLogs();
-    drawLogs();
-  };
-  drawLogs();
-
-  // 失蹤者照片
-  if (c && cloud.user) {
-    const drawSubject = async () => {
-      const list = (await listPhotos(c.id)).filter((p) => p.kind === 'subject');
-      const box = el.querySelector('#subjectPhotoList');
-      if (!box) return;
-      box.innerHTML = thumbsHtml(list, { empty: '還沒有失蹤者照片' });
-      bindThumbs(box, list);
-    };
-    el.querySelector('#subjectUpload').onclick = async () => {
-      if (await pickAndUpload(c.id, 'subject')) drawSubject();
-    };
-    drawSubject();
-  }
 
   const card = el.querySelector('#clCard');
   if (!c) {
@@ -328,6 +249,3 @@ export async function render(el, app) {
   });
 }
 
-export function destroy() {
-  releaseUrls();
-}

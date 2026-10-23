@@ -108,3 +108,38 @@ export function pickFile(accept) {
 
 export const fmtTime = (d = new Date()) =>
   `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+// 取代 window.prompt（部分瀏覽器／App 內嵌網頁不支援）：在底部面板輸入一行文字
+// 回傳輸入內容；按取消或點背景回傳 null
+export function ask(title, { value = '', placeholder = '', ok = '確定', hint = '' } = {}) {
+  return new Promise((resolve) => {
+    const s = sheet(`
+      <h2>${esc(title)}</h2>
+      <form id="askForm">
+        <input type="text" id="askInput" value="${esc(value)}" placeholder="${esc(placeholder)}" autocomplete="off">
+        ${hint ? `<p class="muted small" style="margin-top:6px">${esc(hint)}</p>` : ''}
+        <div class="btn-row" style="margin-top:12px">
+          <button type="submit" class="btn primary">${esc(ok)}</button>
+          <button type="button" class="btn" id="askCancel">取消</button>
+        </div>
+      </form>`);
+    let done = false;
+    const finish = (v) => {
+      if (done) return;
+      done = true;
+      closeSheet();
+      resolve(v);
+    };
+    const input = s.querySelector('#askInput');
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+    s.querySelector('#askForm').onsubmit = (e) => {
+      e.preventDefault();
+      finish(input.value);
+    };
+    s.querySelector('#askCancel').onclick = () => finish(null);
+    document.querySelector('.sheet-backdrop')?.addEventListener('click', () => finish(null));
+  });
+}

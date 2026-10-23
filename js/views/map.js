@@ -1,4 +1,4 @@
-import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile } from '../ui.js';
+import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile, ask } from '../ui.js';
 import { icon } from '../icons.js';
 import { db } from '../db.js';
 import { wgs84ToTwd97 } from '../lib/twd97.js';
@@ -6,7 +6,7 @@ import { parseTrackFile, toGpx } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { saveAndUpload, state as cloud } from '../cloud.js';
-import { addPhoto, listPhotos, photoUrl, openLightbox, releaseUrls } from '../photos.js';
+import { listPhotos, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 import * as log from '../log.js';
 import { subscribe } from '../geo.js';
 import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL, fmtDist } from '../markers.js';
@@ -370,28 +370,11 @@ export async function render(el, app) {
     `);
     s.querySelector('#addPhoto')?.addEventListener('click', async () => {
       // 手機會直接開相機（也可以選相簿），照片標在這個位置
-      const file = await new Promise((resolve) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.setAttribute('capture', 'environment');
-        input.onchange = () => resolve(input.files[0] || null);
-        input.click();
-      });
-      if (!file) return;
-      const caption = prompt('照片說明（例如：發現腳印）', '') ?? '';
       closeSheet();
-      toast('壓縮並上傳中…', 4000);
-      try {
-        await addPhoto(c.id, file, { kind: 'scene', caption, lat: +lat.toFixed(6), lng: +lng.toFixed(6) });
-        toast(navigator.onLine ? '照片已上傳' : '照片已存在手機，連線後上傳');
-      } catch (err) {
-        toast(`照片上傳失敗：${err.message}`, 5000);
-      }
-      drawPhotos();
+      if (await pickAndUpload(c.id, 'scene', { caption: '', lat: +lat.toFixed(6), lng: +lng.toFixed(6), camera: true })) drawPhotos();
     });
     s.querySelector('#addMark').onclick = async () => {
-      const name = prompt('標記名稱', `標記 ${fmtTime()}`);
+      const name = await ask('標記名稱', { value: `標記 ${fmtTime()}`, ok: '儲存' });
       if (name == null) return;
       await addPoint({ caseId: c.id, type: 'mark', name: name || '標記', lat, lng, time: new Date().toISOString() });
       closeSheet();

@@ -1,4 +1,4 @@
-import { esc, copyText, shareText, toast, downloadFile, fmtTime } from '../ui.js';
+import { esc, copyText, shareText, toast, downloadFile, fmtTime, ask } from '../ui.js';
 import { icon } from '../icons.js';
 import { wgs84ToTwd97, toDMS, parseCoordinate, distance } from '../lib/twd97.js';
 import { toGpx } from '../lib/gpx.js';
@@ -118,7 +118,7 @@ export async function render(el, app) {
   $('shareBtn').onclick = () => pos && shareText(reportText(c, pos));
   $('markBtn').onclick = async () => {
     if (!pos || !c) return toast(c ? '尚未定位' : '請先匯入案件');
-    const name = prompt('打點名稱', `打點 ${fmtTime()}`);
+    const name = await ask('打點名稱', { value: `打點 ${fmtTime()}`, ok: '儲存' });
     if (name == null) return;
     await addPoint({ caseId: c.id, type: 'gps', name: name || `打點 ${fmtTime()}`, lat: pos.lat, lng: pos.lng, ele: pos.alt, acc: pos.acc, time: new Date(pos.time).toISOString() });
     markers = await caseMarkers(c);

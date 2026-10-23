@@ -1,4 +1,4 @@
-import { esc, downloadFile, sheet, closeSheet, toast } from '../ui.js';
+import { esc, sheet, closeSheet, toast, ask } from '../ui.js';
 import { icon } from '../icons.js';
 import { db, kv } from '../db.js';
 import { caseStatus } from '../lib/caseSchema.js';
@@ -64,7 +64,6 @@ export async function render(el, app) {
         <div class="stack">
           <a class="btn" style="width:100%" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a>
           <a class="btn" style="width:100%" href="#/settings">編輯裝備清單</a>
-          <button class="btn" style="width:100%" id="exp">匯出案件 JSON</button>
           ${c._sync?.source !== 'cloud' && cloud.user ? '<button class="btn primary" style="width:100%" id="up">上傳到雲端，給全隊使用</button>' : ''}
           ${c._sync?.source === 'cloud' ? (isAdmin() ? '<button class="btn danger" style="width:100%" id="delCloud">從雲端刪除（全隊都會移除）</button>' : '') : '<button class="btn danger" style="width:100%" id="del">從這支手機刪除</button>'}
         </div>`);
@@ -78,7 +77,7 @@ export async function render(el, app) {
       });
       s.querySelector('#delCloud')?.addEventListener('click', async () => {
         if (!confirm(`從雲端刪除「${c.meta.name}」？全隊的手機都會移除這個案件、路線與照片，無法復原。`)) return;
-        if (prompt(`請輸入案件名稱「${c.meta.name}」確認刪除`) !== c.meta.name) return toast('名稱不符，已取消');
+        if ((await ask(`請輸入案件名稱「${c.meta.name}」確認刪除`, { ok: '刪除', hint: '刪除後全隊都會移除，無法復原' })) !== c.meta.name) return toast('名稱不符，已取消');
         try {
           await deleteCase(c.id);
           closeSheet();
@@ -87,9 +86,6 @@ export async function render(el, app) {
           toast(`刪除失敗：${e.message}`, 5000);
         }
       });
-      s.querySelector('#exp').onclick = async () => {
-        downloadFile(`${c.id}.json`, JSON.stringify(await db.get('cases', c.id), null, 2), 'application/json');
-      };
       s.querySelector('#del')?.addEventListener('click', async () => {
         if (!confirm(`刪除「${c.meta.name}」以及本機的打點、航跡、勾選？`)) return;
         await Promise.all([db.delete('cases', c.id), db.deleteByCase('tracks', c.id), db.deleteByCase('points', c.id), kv.del(`checklist:${c.id}`), kv.del(`coords:${c.id}`)]);
