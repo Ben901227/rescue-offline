@@ -80,7 +80,7 @@ npm test
 - 案件代號由程式自動產生（通報日期＋4 碼，例如 `2026-10-11-k3x9`）。
 - 按「儲存並上傳」會存到本機並直接上傳到 Drive 資料夾；離線時先存本機，下次同步自動補傳。若 Drive 上的版本已被別人改過，會先詢問是否覆蓋。
 
-也可以手動複製 `cases/template.json`，依 `cases/schema.md` 填寫。範例：`private/mudanyan-2026-10.json`（2026.10 牡丹岩案）。
+資料組也可以複製 `cases/template.json`，依 `cases/schema.md` 填好後直接放進 Drive 資料夾，隊員同步即可取得。
 
 ## 底圖
 
