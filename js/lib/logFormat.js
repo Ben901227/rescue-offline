@@ -15,6 +15,7 @@ export function formatReport(entries, info) {
   const head = [
     '搜救資訊 使用記錄',
     `App 版本：${info.version}`,
+    ...(info.account ? [`帳號：${info.account}`] : []),
     `產生時間：${fmtStamp(info.now)}`,
     `裝置：${info.device}`,
     `從主畫面開啟：${info.standalone ? '是' : '否'}　網路：${info.online ? '連線' : '離線'}`,

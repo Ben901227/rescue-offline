@@ -1,7 +1,7 @@
 // 手機本機的使用記錄：錯誤、同步上傳結果、更新等。只存在這支手機，最多留 MAX 筆。
 // 記錄本身出錯時一律吞掉，絕不影響 App 運作。
 import { db } from './db.js';
-import { APP_VERSION } from './version.js';
+import { APP_VERSION, APP_CHANNEL } from './version.js';
 import { formatReport, describeDevice } from './lib/logFormat.js';
 
 const MAX = 500;
@@ -38,11 +38,14 @@ export async function clearLogs() {
   for (const k of await db.keys('logs')) await db.delete('logs', k);
 }
 
-export async function reportText() {
+export const deviceName = () => describeDevice(navigator.userAgent);
+
+export async function reportText(account) {
   return formatReport(await readLogs(), {
-    version: APP_VERSION,
+    account,
+    version: APP_CHANNEL ? `${APP_VERSION}（${APP_CHANNEL}）` : APP_VERSION,
     now: new Date().toISOString(),
-    device: describeDevice(navigator.userAgent),
+    device: deviceName(),
     standalone: matchMedia('(display-mode: standalone)').matches || !!navigator.standalone,
     online: navigator.onLine,
   });

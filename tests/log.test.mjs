@@ -12,6 +12,8 @@ test('formatReport 含裝置資訊表頭', () => {
   assert.match(r, /App 版本：v12/);
   assert.match(r, /從主畫面開啟：是　網路：離線/);
   assert.match(r, /記錄筆數：0/);
+  assert.doesNotMatch(r, /帳號：/);
+  assert.match(formatReport([], { version: 'v0.0.15', now: new Date().toISOString(), device: 'x', account: 'a@b.c' }), /帳號：a@b\.c/);
 });
 
 test('describeDevice', () => {

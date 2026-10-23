@@ -131,6 +131,59 @@ const cleanForUpload = (c) => {
   return JSON.stringify(rest, null, 2);
 };
 
+// 使用記錄上傳到案件資料夾裡的 logs 子資料夾，每支手機一個文字檔，每次同步覆蓋成最新內容
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+
+async function logsFolderId(parentId) {
+  const q = encodeURIComponent(`'${parentId}' in parents and name = 'logs' and mimeType = '${FOLDER_MIME}' and trashed = false`);
+  const found = await api(`/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+  if (found.files.length) return found.files[0].id;
+  const made = await api(`/files?fields=id&supportsAllDrives=true`, {
+    method: 'POST',
+    body: JSON.stringify({ name: 'logs', mimeType: FOLDER_MIME, parents: [parentId] }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return made.id;
+}
+
+// 這支手機的代號：第一次產生後固定，用來區分同一個帳號的多支手機
+async function deviceId() {
+  let id = await kv.get('deviceId');
+  if (!id) {
+    id = Math.random().toString(36).slice(2, 6);
+    await kv.set('deviceId', id);
+  }
+  return id;
+}
+
+export async function uploadLogs(email) {
+  const logs = await log.readLogs();
+  if (!logs.length) return false;
+  const { folderId } = await getConfig();
+  const account = (email || '').split('@')[0] || '未登入';
+  const name = `${account}_${log.deviceName().replace(/\s+/g, '-')}_${await deviceId()}.txt`;
+  const body = await log.reportText(email);
+  const fields = 'fields=id&supportsAllDrives=true';
+  const saved = await kv.get('logFile');
+  if (saved?.folderId === folderId) {
+    try {
+      await api(`${UPLOAD}/files/${saved.fileId}?uploadType=media&${fields}`, { method: 'PATCH', body, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } });
+      return true;
+    } catch (e) {
+      if (e.status !== 404) throw e; // 檔案被刪了就重建
+    }
+  }
+  const parent = await logsFolderId(folderId);
+  const boundary = `b${Math.random().toString(36).slice(2)}`;
+  const multipart =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify({ name, parents: [parent], mimeType: 'text/plain' }) +
+    `\r\n--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${body}\r\n--${boundary}--`;
+  const made = await api(`${UPLOAD}/files?uploadType=multipart&${fields}`, { method: 'POST', body: multipart, headers: { 'Content-Type': `multipart/related; boundary=${boundary}` } });
+  await kv.set('logFile', { folderId, fileId: made.id, name });
+  return true;
+}
+
 // 上傳案件 JSON：已有 Drive 檔就覆蓋，沒有就在資料夾新建。
 // Drive 上的版本比本機上次同步新時丟出 conflict，呼叫端決定要不要 force。
 export async function uploadCase(c, { force = false } = {}) {
@@ -350,6 +403,8 @@ export function bindSyncCard(card, app, onDone) {
       const r = await sync();
       log.info('同步', summarize(r));
       for (const err of r.errors) log.warn('同步', '檔案有問題', err);
+      // 使用記錄跟著上傳；失敗不影響同步結果
+      await uploadLogs(r.email).catch((e) => log.warn('使用記錄', '上傳使用記錄失敗', e.message));
       msg.innerHTML = esc(summarize(r)) + (r.errors.length ? `<br>${r.errors.map(esc).join('<br>')}` : '');
       await app.reload();
       onDone?.();

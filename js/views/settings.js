@@ -1,6 +1,6 @@
 import { esc, toast } from '../ui.js';
 import { icon } from '../icons.js';
-import { APP_VERSION, APP_DATE } from '../version.js';
+import { APP_VERSION, APP_CHANNEL, APP_DATE } from '../version.js';
 import { checkUpdate, applyUpdate } from '../update.js';
 import { readLogs, clearLogs, reportText } from '../log.js';
 import { fmtStamp, LEVEL_LABEL } from '../lib/logFormat.js';
@@ -42,7 +42,7 @@ export async function render(el, app) {
       </section>
       <section class="card" id="logCard">
         <h2>使用記錄</h2>
-        <p class="muted small">記下錯誤、同步與上傳結果、更新等，只存在這支手機。遇到問題時按「複製記錄」，貼到 LINE 傳給資料組。</p>
+        <p class="muted small">記下錯誤、同步與上傳結果、更新等。每次「同步」時會一併上傳給資料組（Google 雲端硬碟的 logs 資料夾）；急的話也可以按「複製記錄」貼到 LINE。</p>
         <div class="seg" role="group" aria-label="顯示哪些記錄" style="margin-top:10px">
           <button type="button" class="btn small" data-logf="all" aria-pressed="true">全部</button>
           <button type="button" class="btn small" data-logf="problem" aria-pressed="false">只看問題</button>
@@ -56,7 +56,7 @@ export async function render(el, app) {
       </section>
       <section class="card" id="verCard">
         <h2>App 版本</h2>
-        <p>目前版本：<b class="mono">${APP_VERSION}</b> <span class="muted small">（${APP_DATE}）</span></p>
+        <p>目前版本：<b class="mono">${APP_VERSION}</b> ${APP_CHANNEL ? `<span class="chip warn">${APP_CHANNEL}</span>` : ''} <span class="muted small">${APP_DATE}</span></p>
         <p id="verStatus" class="small" style="margin-top:4px">檢查中…</p>
         <div class="btn-row" style="margin-top:10px"><button class="btn" id="verCheck">重新檢查</button><button class="btn primary hidden" id="verUpdate">立即更新</button></div>
       </section>
