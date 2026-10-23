@@ -7,6 +7,7 @@ import * as tasks from './views/tasks.js';
 import * as cases from './views/cases.js';
 import * as settings from './views/settings.js';
 import * as edit from './views/editor.js';
+import { checkUpdate, applyUpdate } from './update.js';
 
 const views = { summary, map, gps, tasks, cases, settings, edit };
 const viewEl = document.getElementById('view');
@@ -77,6 +78,30 @@ updateNet();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW 註冊失敗', e));
 }
+
+// 有網路時檢查是否有新版，有的話在頂部提示
+let updateDismissed = false;
+async function showUpdateBar() {
+  if (updateDismissed) return;
+  const u = await checkUpdate();
+  const bar = document.getElementById('updateBar');
+  bar.hidden = u.status !== 'update';
+  document.body.classList.toggle('has-update', !bar.hidden);
+  if (u.status === 'update') document.getElementById('updateText').textContent = `有新版本（${u.latest}），目前 ${u.current}`;
+}
+document.getElementById('updateBtn').addEventListener('click', async (e) => {
+  e.target.disabled = true;
+  e.target.textContent = '更新中…';
+  await applyUpdate();
+});
+document.getElementById('updateLater').addEventListener('click', () => {
+  updateDismissed = true;
+  document.getElementById('updateBar').hidden = true;
+  document.body.classList.remove('has-update');
+});
+window.addEventListener('online', showUpdateBar);
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && showUpdateBar());
+showUpdateBar();
 
 await app.reload();
 if (!app.current && !location.hash.startsWith('#/cases')) app.go('cases');

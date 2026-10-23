@@ -114,6 +114,9 @@ a.icon-btn { text-decoration: none; }
 .cl-title { font-weight: 700; }
 .cl-item { margin: 6px 0 0 14px; }
 .cl-item input { min-height: 44px; padding: 6px 10px; }
+.update-bar { position: fixed; z-index: 1100; left: 8px; right: 8px; top: calc(var(--topbar-h) + var(--safe-t) + 6px); display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--text); border: 1px solid var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,.18); font-weight: 600; }
+.update-bar[hidden] { display: none; }
+.update-bar span { flex: 1; min-width: 0; font-size: .9rem; }
 .net { font-size: .75rem; padding: 3px 8px; border-radius: 99px; background: var(--ok-soft); color: var(--ok); white-space: nowrap; }
 .net.offline { background: var(--warn-soft); color: var(--warn); }
 
@@ -305,3 +308,5 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .route-link { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; min-height: 44px; }
 .route-link .ico { color: var(--muted); flex: none; }
 .route-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line); }
+/* 有新版提示時把內容往下推，避免蓋住 */
+body.has-update main:not(.full) { padding-top: calc(var(--topbar-h) + var(--safe-t) + 76px); }

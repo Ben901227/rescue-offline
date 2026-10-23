@@ -1,5 +1,7 @@
 import { esc, toast } from '../ui.js';
 import { icon } from '../icons.js';
+import { APP_VERSION, APP_DATE } from '../version.js';
+import { checkUpdate, applyUpdate } from '../update.js';
 import { db } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { driveSettingsHtml, bindDriveSettings, prepare, beginAuth, saveAndUpload } from '../drive.js';
@@ -26,10 +28,33 @@ export async function render(el, app) {
       <h1 style="font-size:1.3rem">設定</h1>
       <section class="card" id="clCard"></section>
       <section class="card" id="driveCard">${driveSettingsHtml()}</section>
+      <section class="card" id="verCard">
+        <h2>App 版本</h2>
+        <p>目前版本：<b class="mono">${APP_VERSION}</b> <span class="muted small">（${APP_DATE}）</span></p>
+        <p id="verStatus" class="small" style="margin-top:4px">檢查中…</p>
+        <div class="btn-row" style="margin-top:10px"><button class="btn" id="verCheck">重新檢查</button><button class="btn primary hidden" id="verUpdate">立即更新</button></div>
+      </section>
       <a class="btn" style="width:100%" href="guide.html">${icon('help')}使用教學</a>
       <p class="muted small" style="text-align:center"><a href="#/cases">← 回案件列表</a></p>
     </div>`;
   bindDriveSettings(el.querySelector('#driveCard'), app);
+  const verStatus = el.querySelector('#verStatus');
+  const verUpdate = el.querySelector('#verUpdate');
+  const runCheck = async () => {
+    verStatus.textContent = '檢查中…';
+    const u = await checkUpdate();
+    verStatus.innerHTML =
+      u.status === 'latest' ? `${icon('checkCircle', { size: 18 })} 已是最新版` : u.status === 'update' ? `有新版本 <b class="mono">${esc(u.latest)}</b> 可以更新` : '目前離線，連上網路後才能檢查';
+    verStatus.style.color = u.status === 'latest' ? 'var(--ok)' : u.status === 'update' ? 'var(--accent)' : 'var(--muted)';
+    verUpdate.classList.toggle('hidden', u.status !== 'update');
+  };
+  el.querySelector('#verCheck').onclick = runCheck;
+  verUpdate.onclick = async () => {
+    verUpdate.disabled = true;
+    verUpdate.textContent = '更新中…';
+    await applyUpdate();
+  };
+  runCheck();
   prepare().catch(() => {});
 
   const card = el.querySelector('#clCard');

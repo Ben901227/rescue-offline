@@ -2,9 +2,8 @@
 
 手機用的搜救案件資訊 PWA：案件摘要、離線地圖（預設魯地圖）、GPS／TWD97 座標工具、任務分組與檢查清單。加到主畫面後，沒有網路也能使用。
 
-**網址：https://ben901227.github.io/rescue-offline/**（手機開啟後「加入主畫面」即可離線使用）
-
-**使用教學：https://ben901227.github.io/rescue-offline/guide.html**（圖文、大字，App 右上角「?」也能打開）
+- **App 網址**：[https://ben901227.github.io/rescue-offline/](https://ben901227.github.io/rescue-offline/)（手機開啟後「加入主畫面」即可離線使用）
+- **使用教學**：[https://ben901227.github.io/rescue-offline/guide.html](https://ben901227.github.io/rescue-offline/guide.html)（圖文、大字，App 右上角「?」也能打開）
 
 ## 個資原則
 
@@ -63,7 +62,7 @@ npm test
 
 把專案（不含 `private/`）推到 GitHub repo，在 Settings → Pages 選分支即可。任何 HTTPS 靜態主機都可以。
 
-**每次修改 App 檔案後，把 `sw.js` 的 `VERSION` 加 1**；新增檔案時也要加進 `SHELL` 清單，否則離線時會缺檔。
+**每次修改 App 檔案後，把 `sw.js` 的 `VERSION` 和 `js/version.js` 的 `APP_VERSION` 一起加 1**（`npm test` 會檢查兩者一致）；新增檔案時也要加進 `sw.js` 的 `SHELL` 清單，否則離線時會缺檔。隊員打開 App 時，若有新版會在頂部提示「有新版本」，設定頁也能看目前版本並立即更新。
 
 ## 隊員使用流程
 
