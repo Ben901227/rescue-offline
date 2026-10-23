@@ -26,6 +26,7 @@ export async function render(el, app) {
       <h1 style="font-size:1.3rem">設定</h1>
       <section class="card" id="clCard"></section>
       <section class="card" id="driveCard">${driveSettingsHtml()}</section>
+      <a class="btn" style="width:100%" href="guide.html">${icon('help')}使用教學</a>
       <p class="muted small" style="text-align:center"><a href="#/cases">← 回案件列表</a></p>
     </div>`;
   bindDriveSettings(el.querySelector('#driveCard'), app);
@@ -38,6 +39,10 @@ export async function render(el, app) {
   }
 
   const raw = await db.get('cases', c.id);
+  if (!raw) {
+    card.innerHTML = '<h2>裝備清單</h2><p class="muted">找不到這個案件，請到「案件」頁重新選擇。</p>';
+    return;
+  }
   let groups = editable(raw.checklist);
   const others = app.cases.filter((x) => x.id !== c.id && x.checklist.length);
 

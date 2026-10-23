@@ -90,6 +90,8 @@ p { margin: 0; }
 }
 .case-name { font-weight: 700; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn { width: 44px; height: 44px; display: grid; place-items: center; background: none; border: 0; color: var(--muted); cursor: pointer; border-radius: 10px; }
+.icon-btn { color: var(--muted); }
+a.icon-btn { text-decoration: none; }
 .icon-btn .ico { width: 24px; height: 24px; }
 .fld { margin-top: 12px; }
 .fld:first-child { margin-top: 0; }

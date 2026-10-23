@@ -35,6 +35,7 @@ export async function render(el, app) {
       <a class="btn" style="width:100%" href="#/edit">${icon('plus', { size: 18 })}新增案件</a>
       <section class="card">
         <h2>離線準備</h2>
+        <p class="small" style="margin-bottom:6px">第一次使用？<a href="guide.html">${icon('help', { size: 18 })} 看圖文使用教學</a></p>
         <ul class="todo">
           ${step(standalone, standalone ? '已從主畫面開啟' : isIOS ? '在 Safari 按「分享」→「加入主畫面」，之後從主畫面圖示開啟' : '在瀏覽器選單選「安裝應用程式」或「加到主畫面」')}
           ${step(app.cases.length, app.cases.length ? '已有案件資料' : '同步或新增案件資料')}

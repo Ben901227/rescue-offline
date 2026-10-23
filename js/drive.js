@@ -28,20 +28,14 @@ let token = null; // { access_token, expires_at }，只放記憶體
 let hintEmail = null;
 let cfgCache = null;
 
+// 用戶端 ID 與資料夾只由 js/config.js 控制，使用者不需要也不能修改
 export async function getConfig() {
-  const saved = (await kv.get('driveConfig')) || {};
-  cfgCache = { clientId: saved.clientId || GOOGLE.clientId, folderId: saved.folderId || GOOGLE.folderId };
+  cfgCache = { clientId: GOOGLE.clientId, folderId: GOOGLE.folderId };
   return cfgCache;
 }
 
 // prepare() 之後可同步判斷，給點擊事件用
 export const isConfigured = () => !!(cfgCache?.clientId && cfgCache?.folderId);
-
-export function parseFolderId(input) {
-  const s = String(input || '').trim();
-  const m = s.match(/folders\/([\w-]+)/) || s.match(/[?&]id=([\w-]+)/);
-  return m ? m[1] : s;
-}
 
 function loadGis() {
   gisPromise ??= new Promise((resolve, reject) => {
@@ -325,7 +319,7 @@ export async function syncCardHtml() {
   const cfg = await getConfig();
   const last = await kv.get('driveLast');
   if (!cfg.clientId || !cfg.folderId) {
-    return `<h2>Google Drive 同步</h2><p class="muted small">尚未設定。請到 <a href="#/settings">設定</a> 填入 OAuth 用戶端 ID 與資料夾。</p>`;
+    return `<h2>Google Drive 同步</h2><p class="muted small">此版本尚未設定 Google 同步，請聯絡資料組。</p>`;
   }
   return `
     <h2>Google Drive 同步</h2>
@@ -362,38 +356,23 @@ export function bindSyncCard(card, app, onDone) {
   };
 }
 
-// 設定頁的 Google 區塊
+// 設定頁的 Google 區塊：只顯示登入帳號與登出
 export function driveSettingsHtml() {
   return `
-    <h2>Google 登入與 Drive</h2>
-    <p class="muted small">案件 JSON 與 GPX 放在只分享給搜救人員的 Drive 資料夾；能否讀取由資料夾的共用設定決定。</p>
-    <label class="small" style="display:block;margin-top:10px">Drive 資料夾網址或 ID</label>
-    <input type="text" id="cfgFolder" placeholder="https://drive.google.com/drive/folders/…">
-    <label class="small" style="display:block;margin-top:10px">OAuth 用戶端 ID</label>
-    <input type="text" id="cfgClient" placeholder="xxxx.apps.googleusercontent.com">
-    <div class="btn-row" style="margin-top:10px">
-      <button class="btn primary" id="cfgSave">儲存</button>
-      <button class="btn danger" id="cfgOut">登出 Google</button>
-    </div>
-    <p class="muted small" id="cfgInfo" style="margin-top:8px"></p>`;
+    <h2>Google 帳號</h2>
+    <p class="muted small">案件資料存在只分享給搜救人員的 Google 雲端硬碟資料夾，用 Google 帳號登入後同步。</p>
+    <p id="cfgInfo" style="margin-top:8px"></p>
+    <div class="btn-row" style="margin-top:10px"><button class="btn danger" id="cfgOut">登出 Google</button></div>`;
 }
 
 export async function bindDriveSettings(card) {
-  const cfg = await getConfig();
   const last = await kv.get('driveLast');
-  card.querySelector('#cfgFolder').value = cfg.folderId;
-  card.querySelector('#cfgClient').value = cfg.clientId;
-  card.querySelector('#cfgInfo').textContent = last?.email ? `目前登入：${last.email}` : '尚未登入';
-  card.querySelector('#cfgSave').onclick = async () => {
-    const folderId = parseFolderId(card.querySelector('#cfgFolder').value);
-    const clientId = card.querySelector('#cfgClient').value.trim();
-    if (clientId && !/\.apps\.googleusercontent\.com$/.test(clientId)) return toast('用戶端 ID 應以 .apps.googleusercontent.com 結尾', 4000);
-    await kv.set('driveConfig', { folderId, clientId });
-    card.querySelector('#cfgFolder').value = folderId;
-    toast('已儲存，到「案件」頁按同步');
-  };
+  const info = card.querySelector('#cfgInfo');
+  info.textContent = last?.email ? `目前登入：${last.email}` : '尚未登入（到「案件」頁按同步即可登入）';
+  card.querySelector('#cfgOut').disabled = !last?.email;
   card.querySelector('#cfgOut').onclick = async () => {
     await signOut();
-    card.querySelector('#cfgInfo').textContent = '已登出（本機案件資料保留，可到案件頁刪除）';
+    info.textContent = '已登出（手機上的案件資料保留，可到案件頁刪除）';
+    card.querySelector('#cfgOut').disabled = true;
   };
 }

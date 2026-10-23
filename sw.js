@@ -1,5 +1,5 @@
 // 改了任何 App 檔案就把版本號 +1，手機下次連線時會更新快取。
-const VERSION = 'v7';
+const VERSION = 'v10';
 const SHELL_CACHE = `shell-${VERSION}`;
 const TILE_CACHE = 'tiles-v1';
 const TILE_HOSTS = ['tile.happyman.idv.tw', 'wmts.nlsc.gov.tw'];
@@ -7,6 +7,7 @@ const TILE_HOSTS = ['tile.happyman.idv.tw', 'wmts.nlsc.gov.tw'];
 const SHELL = [
   './',
   'index.html',
+  'guide.html',
   'manifest.webmanifest',
   'css/app.css',
   'js/app.js',
@@ -100,5 +101,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (TILE_HOSTS.includes(url.hostname)) return e.respondWith(tile(req));
-  if (url.origin === self.location.origin) return e.respondWith(shell(req.mode === 'navigate' ? new Request('index.html') : req, e));
+  if (url.origin !== self.location.origin) return;
+  // App 本身的網址（/、index.html、#/…）一律回 index.html；其他頁面（例如 guide.html）照常回應
+  const isApp = req.mode === 'navigate' && !/\.html?$/.test(url.pathname.replace(/index\.html?$/, ''));
+  return e.respondWith(shell(isApp ? new Request('index.html') : req, e));
 });

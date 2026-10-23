@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>搜救資訊 App 使用教學</title>
+<meta name="description" content="搜救資訊離線版 App 的一步一步使用教學，適合第一次使用的隊員。">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --text: #1c1917;
+  --muted: #57534e;
+  --line: #e7e0d8;
+  --accent: #c2410c;
+  --accent-soft: #fde7da;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
+  --warn: #92400e;
+  --warn-soft: #fef3c7;
+  --blue: #1d4ed8;
+  --fs: 19px;
+}
+* { box-sizing: border-box; }
+html { font-size: var(--fs); scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  line-height: 1.75; -webkit-text-size-adjust: 100%;
+}
+a { color: var(--blue); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 80px; }
+h1 { font-size: 1.75rem; line-height: 1.35; margin: 0 0 8px; }
+h2 { font-size: 1.4rem; line-height: 1.4; margin: 0; }
+h3 { font-size: 1.15rem; margin: 0 0 6px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+b.key { color: var(--accent); }
+
+/* 頂部 */
+.top { position: sticky; top: 0; z-index: 10; background: var(--card); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+.top .title { flex: 1; font-weight: 800; font-size: 1.05rem; }
+.size { display: flex; gap: 6px; }
+.size button { min-width: 56px; padding: 0 8px; min-height: 48px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
+.size button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+.hero { padding: 28px 0 8px; }
+.hero p { font-size: 1.05rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+.cards div { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; gap: 10px; align-items: flex-start; }
+.cards svg { flex: none; color: var(--accent); margin-top: 4px; }
+
+.callout { border-radius: 16px; padding: 14px 16px; margin: 14px 0; display: flex; gap: 12px; align-items: flex-start; }
+.callout svg { flex: none; margin-top: 4px; }
+.callout.warn { background: var(--warn-soft); color: var(--warn); }
+.callout.ok { background: var(--ok-soft); color: #14532d; }
+.callout.tip { background: #e0ecff; color: #1e3a8a; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* 目錄 */
+nav.toc { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin: 20px 0; }
+nav.toc h2 { font-size: 1.15rem; margin-bottom: 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+nav.toc a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; border-radius: 12px; background: var(--bg); color: var(--text); text-decoration: none; font-weight: 700; }
+nav.toc a .n { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: .9rem; }
+nav.toc .group { font-size: .9rem; color: var(--muted); font-weight: 700; margin: 10px 0 0; }
+
+/* 章節與步驟 */
+section.part { margin-top: 40px; }
+.part-head { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 3px solid var(--accent); margin-bottom: 18px; }
+.part-head .tag { background: var(--accent); color: #fff; font-weight: 800; border-radius: 10px; padding: 2px 10px; font-size: .85rem; white-space: nowrap; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 18px; margin: 16px 0; }
+.step-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.num { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1.15rem; }
+.step-head h3 { margin: 0; }
+ol.do { margin: 0 0 12px; padding-left: 1.4em; }
+ol.do li { margin: 6px 0; padding-left: 4px; }
+.btnlike { display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 700; white-space: nowrap; line-height: 1.7; }
+.btnlike.plain { background: var(--card); color: var(--text); border: 2px solid var(--line); }
+.btnlike svg { width: 1em; height: 1em; }
+.tabs { display: flex; gap: 8px; margin: 12px 0; }
+.tabs button { flex: 1; min-height: 52px; border-radius: 12px; border: 2px solid var(--line); background: var(--bg); font: inherit; font-weight: 800; cursor: pointer; color: var(--text); }
+.tabs button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* 手機示意圖 */
+.shots { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 14px 0 4px; }
+figure { margin: 0; text-align: center; }
+figcaption { font-size: .85rem; color: var(--muted); margin-top: 6px; font-weight: 700; }
+.phone { width: 220px; height: 400px; border: 8px solid #292524; border-radius: 30px; background: #f6f4f1; overflow: hidden; position: relative; display: flex; flex-direction: column; font-size: 11px; line-height: 1.4; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+.ph-top { background: #fff; border-bottom: 1px solid #e2dcd5; padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 12px; }
+.ph-top .chip { font-size: 9px; background: #dcfce7; color: #15803d; border-radius: 99px; padding: 1px 6px; font-weight: 700; }
+.ph-top .sp { flex: 1; }
+.ph-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; position: relative; }
+.ph-card { background: #fff; border: 1px solid #e2dcd5; border-radius: 10px; padding: 7px 8px; }
+.ph-card b { font-size: 11.5px; }
+.ph-btn { white-space: nowrap; border-radius: 8px; padding: 6px 8px; text-align: center; font-weight: 800; background: #fff; border: 1px solid #e2dcd5; }
+.ph-btn.pri { background: #c2410c; color: #fff; border-color: #c2410c; }
+.ph-tab { background: #fff; border-top: 1px solid #e2dcd5; display: grid; grid-template-columns: repeat(5, 1fr); padding: 5px 0 7px; }
+.ph-tab span { display: flex; flex-direction: column; align-items: center; gap: 1px; color: #6b635c; font-size: 9px; }
+.ph-tab span.on { color: #c2410c; font-weight: 800; }
+.ph-tab svg { width: 16px; height: 16px; }
+.ph-map { flex: 1; position: relative; background:
+  radial-gradient(circle at 30% 40%, transparent 0 18px, rgba(120,90,60,.18) 19px 20px, transparent 21px 34px, rgba(120,90,60,.18) 35px 36px, transparent 37px 52px, rgba(120,90,60,.18) 53px 54px, transparent 55px),
+  radial-gradient(circle at 70% 70%, transparent 0 14px, rgba(120,90,60,.18) 15px 16px, transparent 17px 30px, rgba(120,90,60,.18) 31px 32px, transparent 33px),
+  linear-gradient(160deg, #f4f1ea, #ece6da); }
+.ph-tools { position: absolute; right: 8px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ph-tools i { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.3); color: #1c1917; }
+.ph-tools svg { width: 16px; height: 16px; }
+.ph-sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 14px 14px 0 0; padding: 10px; box-shadow: 0 -4px 14px rgba(0,0,0,.2); display: flex; flex-direction: column; gap: 6px; }
+.ph-dim { position: absolute; inset: 0; background: rgba(0,0,0,.4); }
+.ph-safari { background: #f2f2f7; border-top: 1px solid #d1d1d6; display: flex; justify-content: space-around; padding: 8px 0 10px; color: #007aff; }
+.ph-safari svg { width: 18px; height: 18px; }
+.ph-list div { padding: 7px 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.ph-dialog { position: absolute; left: 14px; right: 14px; top: 110px; background: #fff; border-radius: 14px; padding: 12px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.ph-dialog .row { display: flex; border-top: 1px solid #eee; margin: 10px -12px -12px; }
+.ph-dialog .row span { flex: 1; padding: 9px; color: #007aff; font-weight: 700; }
+.ph-dialog .row span + span { border-left: 1px solid #eee; }
+.big-coord { font-size: 15px; font-weight: 800; font-family: ui-monospace, Menlo, monospace; }
+
+/* 「按這裡」的提示 */
+.tap { position: relative; z-index: 2; }
+.tap::after { content: ""; position: absolute; inset: -5px; border: 3px solid #dc2626; border-radius: 12px; animation: pulse 1.4s ease-in-out infinite; pointer-events: none; }
+.tap.round::after { border-radius: 50%; }
+.hand { position: absolute; z-index: 3; width: 34px; height: 34px; color: #dc2626; filter: drop-shadow(0 1px 1px #fff); pointer-events: none; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .tap::after { animation: none; } html { scroll-behavior: auto; } }
+
+/* 按鈕對照表 */
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.legend div { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.legend i { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; }
+.legend i svg { width: 24px; height: 24px; }
+
+/* 常見問題 */
+details.faq { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin: 10px 0; }
+details.faq summary { cursor: pointer; padding: 14px 16px; font-weight: 800; min-height: 52px; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq summary::after { content: "＋"; color: var(--accent); font-size: 1.2rem; }
+details.faq[open] summary::after { content: "－"; }
+details.faq > div { padding: 0 16px 14px; }
+
+.qr { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin: 12px 0; }
+.qr svg { width: 150px; height: 150px; background: #fff; border-radius: 10px; flex: none; }
+.url { font-family: ui-monospace, Menlo, monospace; font-size: .95rem; word-break: break-all; background: var(--bg); padding: 6px 10px; border-radius: 8px; display: inline-block; }
+.copy { min-height: 48px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 800; cursor: pointer; margin-top: 8px; }
+
+.back { display: inline-flex; align-items: center; min-height: 48px; font-weight: 700; }
+footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: center; }
+
+@media (max-width: 480px) {
+  .cards { grid-template-columns: 1fr; }
+  .size button { min-width: 52px; padding: 0 6px; }
+  .phone { width: 190px; height: 350px; font-size: 10px; }
+  h1 { font-size: 1.5rem; }
+}
+@media print {
+  .top, .back, .copy, .tabs { display: none !important; }
+  body { background: #fff; }
+  .step, details.faq { break-inside: avoid; }
+  details.faq > div { display: block !important; }
+  .tap::after { animation: none; }
+  [hidden].android-only, [hidden].ios-only { display: block !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="title">使用教學</span>
+    <div class="size" role="group" aria-label="字的大小">
+      <button type="button" data-fs="19" aria-pressed="true">標準</button>
+      <button type="button" data-fs="22" aria-pressed="false" style="font-size:1.1em">大</button>
+      <button type="button" data-fs="26" aria-pressed="false" style="font-size:1.25em">特大</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="hero">
+    <h1>搜救資訊 App 使用教學</h1>
+    <p>這個 App 把搜救案件的資料、地圖、定位都放在手機裡。<b>在山上沒有訊號也能用。</b></p>
+    <p class="muted">不用一次看完。先照「第一次使用」做好準備，上山後要用哪個功能，再看那一段就好。</p>
+    <div class="cards">
+      <div><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span><b>看案件</b><br>失蹤者特徵、時間軸、聯絡人</span></div>
+      <div><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg><span><b>看地圖</b><br>登山地圖，沒訊號也能看</span></div>
+      <div><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span><b>報位置</b><br>一鍵複製自己的座標</span></div>
+      <div><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg><span><b>畫路線</b><br>規劃各隊的搜索路線</span></div>
+    </div>
+    <div class="callout warn" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><div><p><b>請注意個人資料</b></p><p>App 裡有失蹤者和家屬的個人資料，只給搜救人員看。不要截圖傳到群組以外的地方。</p></div></div>
+  </div>
+
+  <nav class="toc" aria-label="目錄">
+    <h2>目錄（點一下就跳過去）</h2>
+    <p class="group">第一部分：第一次使用（在有網路的地方做）</p>
+    <ol>
+      <li><a href="#s1"><span class="n">1</span>打開 App 網址</a></li>
+      <li><a href="#s2"><span class="n">2</span>放到手機桌面</a></li>
+      <li><a href="#s3"><span class="n">3</span>用 Google 帳號取得案件</a></li>
+      <li><a href="#s4"><span class="n">4</span>下載離線地圖</a></li>
+      <li><a href="#s5"><span class="n">5</span>允許定位</a></li>
+    </ol>
+    <p class="group">第二部分：上山後常用</p>
+    <ol>
+      <li><a href="#s6"><span class="n">6</span>看案件資料</a></li>
+      <li><a href="#s7"><span class="n">7</span>回報自己的位置</a></li>
+      <li><a href="#s8"><span class="n">8</span>看地圖、在地圖上做記號</a></li>
+      <li><a href="#s9"><span class="n">9</span>畫搜救路線</a></li>
+      <li><a href="#s10"><span class="n">10</span>勾選裝備清單</a></li>
+    </ol>
+    <p class="group">其他</p>
+    <ol>
+      <li><a href="#s11"><span class="n">11</span>新增或修改案件（資料組）</a></li>
+      <li><a href="#legend"><span class="n">?</span>按鈕圖示是什麼意思</a></li>
+      <li><a href="#faq"><span class="n">?</span>遇到問題怎麼辦</a></li>
+    </ol>
+  </nav>
+
+  <!-- ===================== 第一部分 ===================== -->
+  <section class="part" aria-labelledby="p1">
+    <div class="part-head"><span class="tag">第一部分</span><h2 id="p1">第一次使用</h2></div>
+    <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p><b>請在家裡或有 Wi-Fi 的地方做完這五步。</b>做完以後，上山沒有訊號也能用。</p></div></div>
+
+    <article class="step" id="s1">
+      <div class="step-head"><span class="num">1</span><h3>打開 App 網址</h3></div>
+      <p>用手機的相機對準下面的方塊（QR Code），畫面上出現網址時點一下。</p>
+      <div class="qr">
+        <svg role="img" aria-label="App 網址的 QR Code" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" class="segno"><path class="qrline" stroke="#1c1917" d="M2 2.5h7m3 0h2m1 0h1m3 0h8m1 0h7m-33 1h1m5 0h1m1 0h2m2 0h2m2 0h1m1 0h1m1 0h4m2 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h3m1 0h3m1 0h2m1 0h2m1 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m3 0h4m5 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m1 0h1m3 0h1m3 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m2 0h2m2 0h4m2 0h1m2 0h1m1 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-23 1h3m1 0h2m1 0h1m2 0h1m1 0h1m1 0h1m-24 1h3m1 0h2m3 0h2m2 0h1m1 0h9m5 0h2m-32 1h4m6 0h1m1 0h2m1 0h1m3 0h6m1 0h2m1 0h2m1 0h1m-32 1h2m1 0h3m4 0h2m1 0h4m3 0h4m1 0h4m1 0h2m-33 1h3m8 0h1m1 0h4m1 0h2m2 0h1m3 0h2m1 0h1m1 0h2m-33 1h1m1 0h1m1 0h4m1 0h1m3 0h1m1 0h1m2 0h2m2 0h4m2 0h2m1 0h2m-29 1h2m3 0h2m3 0h1m1 0h3m1 0h1m3 0h1m2 0h1m1 0h3m-32 1h3m2 0h3m1 0h1m3 0h1m1 0h2m1 0h5m1 0h1m1 0h4m-28 1h1m2 0h1m3 0h1m1 0h4m3 0h4m3 0h2m2 0h2m-31 1h1m1 0h2m2 0h1m1 0h2m2 0h1m4 0h1m1 0h3m2 0h3m1 0h3m-31 1h5m2 0h1m1 0h1m1 0h1m2 0h2m2 0h1m1 0h2m1 0h1m1 0h2m1 0h2m1 0h2m-32 1h1m1 0h1m1 0h3m4 0h1m1 0h1m1 0h2m2 0h3m1 0h1m2 0h2m1 0h1m-31 1h3m1 0h2m1 0h1m4 0h2m5 0h1m4 0h2m2 0h1m-29 1h1m1 0h2m1 0h3m2 0h1m3 0h2m3 0h1m1 0h1m1 0h1m5 0h3m-32 1h3m2 0h1m1 0h2m1 0h1m1 0h4m1 0h1m1 0h1m1 0h1m1 0h4m2 0h1m2 0h1m-31 1h2m2 0h1m1 0h1m1 0h1m2 0h2m1 0h1m4 0h1m1 0h2m1 0h1m1 0h1m1 0h3m-32 1h1m2 0h2m1 0h5m1 0h1m1 0h1m3 0h2m1 0h1m1 0h3m1 0h1m3 0h1m-33 1h1m2 0h1m1 0h2m1 0h2m1 0h3m1 0h1m2 0h1m5 0h5m3 0h1m-25 1h2m3 0h2m2 0h1m1 0h1m1 0h4m3 0h2m-30 1h7m3 0h3m6 0h1m2 0h3m1 0h1m1 0h1m-29 1h1m5 0h1m1 0h5m3 0h2m1 0h6m3 0h4m-32 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h3m1 0h10m1 0h3m-33 1h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m3 0h1m1 0h4m-33 1h1m1 0h3m1 0h1m1 0h1m2 0h5m2 0h1m3 0h3m1 0h2m1 0h1m-30 1h1m5 0h1m1 0h2m1 0h1m2 0h1m4 0h1m2 0h7m3 0h1m-33 1h7m2 0h1m2 0h1m2 0h1m1 0h2m2 0h3m4 0h3"/></svg>
+        <div>
+          <p>或是在瀏覽器輸入這個網址：</p>
+          <span class="url" id="appUrl">https://ben901227.github.io/rescue-offline/</span><br>
+          <button class="copy" type="button" id="copyUrl">複製網址</button>
+          <p class="muted" style="margin-top:8px">iPhone 請用 <b>Safari</b> 打開；Android 請用 <b>Chrome</b> 打開。</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="step" id="s2">
+      <div class="step-head"><span class="num">2</span><h3>放到手機桌面</h3></div>
+      <p>放到桌面後，App 會像一般 App 一樣有個圖示，<b>以後都從這個圖示打開</b>，沒訊號時才能用。</p>
+      <div class="tabs" role="tablist" aria-label="選擇手機種類">
+        <button type="button" role="tab" id="tab-ios" aria-controls="pane-ios" aria-selected="true">iPhone</button>
+        <button type="button" role="tab" id="tab-android" aria-controls="pane-android" aria-selected="false">Android 手機</button>
+      </div>
+      <div id="pane-ios" class="ios-only" role="tabpanel" aria-labelledby="tab-ios">
+        <ol class="do">
+          <li>按畫面最下面中間的 <b class="key">分享</b> 按鈕（一個方框，上面有向上的箭頭）。</li>
+          <li>往下滑，找到 <b class="key">加入主畫面</b>，按下去。</li>
+          <li>右上角按 <b class="key">加入</b>。</li>
+        </ol>
+        <div class="shots">
+          <figure>
+            <div class="phone" aria-hidden="true">
+              <div class="ph-top"><span>搜救資訊</span></div>
+              <div class="ph-body"><div class="ph-card"><b>搜救資訊離線版</b><br>案件・地圖・定位</div></div>
+              <div class="ph-safari"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m15 18-6-6 6-6"/></svg><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m9 18 6-6-6-6"/></svg><span class="tap round" style="display:grid;place-items:center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg></span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5z"/></svg><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="7" width="13" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"/></svg></div>
+            </div>
+            <figcaption>① 按「分享」</figcaption>
+          </figure>
+          <figure>
+            <div class="phone" aria-hidden="true">
+              <div class="ph-body" style="background:#f2f2f7">
+                <div class="ph-card ph-list" style="padding:0">
+                  <div>拷貝 <span>⧉</span></div>
+                  <div>加入閱讀列表 <span>○○</span></div>
+                  <div class="tap" style="background:#fff">加入主畫面 <span>⊞</span></div>
+                  <div>加入書籤 <span>☆</span></div>
+                </div>
+              </div>
+            </div>
+            <figcaption>② 按「加入主畫面」</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div id="pane-android" class="android-only" role="tabpanel" aria-labelledby="tab-android" hidden>
+        <ol class="do">
+          <li>按 Chrome 右上角的 <b class="key">⋮</b>（三個點）。</li>
+          <li>按 <b class="key">安裝應用程式</b> 或 <b class="key">加到主畫面</b>。</li>
+          <li>再按一次 <b class="key">安裝</b>。</li>
+        </ol>
+        <div class="shots">
+          <figure>
+            <div class="phone" aria-hidden="true">
+              <div class="ph-top" style="font-weight:400"><span class="url" style="font-size:9px;padding:2px 6px">ben901227.github.io</span><span class="sp"></span><span class="tap round" style="font-size:16px;line-height:1;padding:0 4px">⋮</span></div>
+              <div class="ph-body" style="position:relative">
+                <div class="ph-card" style="position:absolute;right:6px;top:4px;width:140px;padding:0" >
+                  <div class="ph-list"><div>新分頁</div><div>書籤</div><div class="tap">安裝應用程式</div><div>分享…</div></div>
+                </div>
+              </div>
+            </div>
+            <figcaption>按「⋮」→「安裝應用程式」</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="callout ok" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p>完成後，手機桌面會出現一個<b>橘色底、白色十字</b>的圖示，名稱是「搜救資訊」。</p></div></div>
+    </article>
+
+    <article class="step" id="s3">
+      <div class="step-head"><span class="num">3</span><h3>用 Google 帳號取得案件</h3></div>
+      <p>案件資料放在搜救隊的 Google 雲端硬碟，只有被加入的隊員看得到。</p>
+      <ol class="do">
+        <li>從桌面圖示打開 App。</li>
+        <li>按最下面的 <b class="key">案件</b>（資料夾圖示）。</li>
+        <li>按 <span class="btnlike">以 Google 登入並同步</span>。</li>
+        <li>選你的 Google 帳號（Gmail）。</li>
+        <li>如果出現「<b>Google 尚未驗證這個應用程式</b>」，這是正常的，請按 <b class="key">繼續</b>；再按 <b class="key">允許</b>。</li>
+      </ol>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>搜救資訊</span><span class="sp"></span></div>
+            <div class="ph-body">
+              <div class="ph-card"><b>Google Drive 同步</b><br>用搜救帳號登入 Google，取得有權限的案件資料。
+                <div class="ph-btn pri tap" style="margin-top:6px">以 Google 登入並同步</div></div>
+              <div class="ph-btn">＋ 新增案件</div>
+              <div class="ph-card"><b>離線準備</b><br>○ 加入主畫面<br>○ 同步或新增案件資料</div>
+            </div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>「案件」頁，按橘色按鈕</figcaption>
+        </figure>
+      </div>
+      <div class="callout ok" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p>成功後會出現案件名稱，例如「牡丹岩」。之後有網路時，再按一次 <b>同步最新資料</b> 就會更新。</p></div></div>
+      <div class="callout warn" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><div><p>出現「<b>已封鎖存取權</b>」或「<b>沒有權限</b>」：表示你的帳號還沒被加入，請把你的 Gmail 告訴資料組。</p></div></div>
+    </article>
+
+    <article class="step" id="s4">
+      <div class="step-head"><span class="num">4</span><h3>下載離線地圖</h3></div>
+      <p>地圖要先下載到手機，上山沒訊號時才看得到。</p>
+      <ol class="do">
+        <li>按最下面的 <b class="key">地圖</b>。</li>
+        <li>按右下角 <b class="key">向下箭頭</b> 的圓形按鈕。</li>
+        <li>按 <span class="btnlike plain">下載案件搜索範圍</span>，等進度條跑完。</li>
+      </ol>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span><span class="chip">已尋獲</span></div>
+            <div class="ph-map"><div class="ph-tools"><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></i><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg></i><i class="tap round"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></i><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></i></div></div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>① 按向下箭頭</figcaption>
+        </figure>
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-map"><div class="ph-dim"></div>
+              <div class="ph-sheet"><b style="font-size:12px">離線地圖</b>
+                <div class="ph-btn tap">下載案件搜索範圍<br><span style="font-weight:400;color:#6b635c">約 23 MB</span></div>
+                <div class="ph-btn">下載目前畫面範圍</div></div></div>
+          </div>
+          <figcaption>② 按「下載案件搜索範圍」</figcaption>
+        </figure>
+      </div>
+      <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><path d="M2 9a15 15 0 0 1 20 0"/><path d="M12 20h.01"/></svg><div><p>地圖檔案比較大，<b>請連 Wi-Fi 再下載</b>。下載時不要關掉 App。</p></div></div>
+    </article>
+
+    <article class="step" id="s5">
+      <div class="step-head"><span class="num">5</span><h3>允許定位</h3></div>
+      <ol class="do">
+        <li>按最下面的 <b class="key">定位</b>。</li>
+        <li>手機問「是否允許使用你的位置」時，按 <b class="key">允許</b>（iPhone 選「使用 App 期間」）。</li>
+      </ol>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-body"><div class="ph-dim"></div>
+              <div class="ph-dialog"><b>允許使用你的位置？</b><p style="margin:6px 0 0;color:#6b635c">App 需要位置來顯示座標</p>
+                <div class="row"><span>不允許</span><span class="tap">允許</span></div></div></div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>按「允許」</figcaption>
+        </figure>
+      </div>
+      <div class="callout ok" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p><b>準備完成！</b>到「案件」頁看「離線準備」清單，每一項前面都是綠色打勾就可以了。</p></div></div>
+    </article>
+  </section>
+
+  <!-- ===================== 第二部分 ===================== -->
+  <section class="part" aria-labelledby="p2">
+    <div class="part-head"><span class="tag">第二部分</span><h2 id="p2">上山後常用</h2></div>
+
+    <article class="step" id="s6">
+      <div class="step-head"><span class="num">6</span><h3>看案件資料</h3></div>
+      <p>按最下面的 <b class="key">摘要</b>，由上往下滑可以看到：</p>
+      <ul>
+        <li><b>目前狀態</b>：搜索中，或已尋獲。</li>
+        <li><b>失蹤者</b>：姓名、年齡、<b>穿著顏色</b>、背包等特徵。</li>
+        <li><b>最後看到他的地方</b>（IPP）。</li>
+        <li><b>聯絡窗口</b>：旁邊有 <span class="btnlike">撥打</span>，按下去就能直接打電話。</li>
+        <li><b>時間軸</b>：原本的行程和每天的搜救紀錄。</li>
+      </ul>
+    </article>
+
+    <article class="step" id="s7">
+      <div class="step-head"><span class="num">7</span><h3>回報自己的位置</h3></div>
+      <ol class="do">
+        <li>按最下面的 <b class="key">定位</b>，等座標出現（在空曠的地方比較快）。</li>
+        <li>按 <span class="btnlike">複製回報</span>。</li>
+        <li>打開 LINE 群組，在輸入框<b>長按 → 貼上</b>，送出。</li>
+      </ol>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-body">
+              <div class="ph-card" style="border-color:#c2410c"><span style="color:#6b635c">TWD97 座標</span><div class="big-coord">281554, 2648690</div><span style="color:#6b635c">經緯度</span><div class="big-coord" style="font-size:12px">23.942500, 121.310000</div><span style="color:#6b635c">精度 ±8 m　高度 2870 m</span></div>
+              <div style="display:flex;gap:4px"><div class="ph-btn pri tap" style="flex:1">複製回報</div><div class="ph-btn" style="flex:1">分享</div><div class="ph-btn" style="flex:1">打點</div></div>
+              <div class="ph-card"><b>到各標記的距離</b><br>發現點　412 m 東南</div>
+            </div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>按「複製回報」</figcaption>
+        </figure>
+      </div>
+      <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="5" y="8" width="14" height="13" rx="2"/><path d="M9 8 15 3"/><circle cx="12" cy="15" r="3"/></svg><div><p><b>用無線電回報時</b>，唸大大的那組「TWD97 座標」數字就可以，例如「二八一五五四、二六四八六九零」。</p></div></div>
+      <p>想記住某個地方（例如發現腳印），按 <span class="btnlike plain">打點</span>，取個名字就會存起來。</p>
+    </article>
+
+    <article class="step" id="s8">
+      <div class="step-head"><span class="num">8</span><h3>看地圖、在地圖上做記號</h3></div>
+      <ul>
+        <li><b>放大縮小</b>：兩根手指在地圖上張開或捏合；或按左上角 <b>＋</b>、<b>－</b>。</li>
+        <li><b>找自己在哪裡</b>：按右下角 <b class="key">準心</b> 圓形按鈕，藍色圓點就是你。按一次後地圖會跟著你移動。</li>
+        <li><b>做記號</b>：用手指在地圖上<b>按住不放約 1 秒</b>，選 <span class="btnlike">加標記</span>，取個名字。</li>
+        <li><b>看某個點的座標</b>：一樣按住不放，會顯示座標，可以按 <span class="btnlike plain">複製座標</span>。</li>
+      </ul>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-map">
+              <span style="position:absolute;left:46%;top:38%;width:14px;height:14px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25)"></span>
+              <div class="ph-tools"><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></i><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg></i><i><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></i><i class="tap round"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></i></div>
+            </div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>藍點＝你的位置</figcaption>
+        </figure>
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-map"><div class="ph-dim"></div>
+              <div class="ph-sheet"><b style="font-size:12px">這個位置</b><span class="big-coord" style="font-size:11px">TWD97 280362, 2650840</span>
+                <div style="display:flex;gap:4px"><div class="ph-btn pri tap" style="flex:1">加標記</div><div class="ph-btn" style="flex:1">複製座標</div></div></div></div>
+          </div>
+          <figcaption>按住地圖 1 秒後出現</figcaption>
+        </figure>
+      </div>
+    </article>
+
+    <article class="step" id="s9">
+      <div class="step-head"><span class="num">9</span><h3>畫搜救路線</h3></div>
+      <p>可以在地圖上畫出每一隊要走的路線，<b>沒有訊號也可以畫</b>。</p>
+      <ol class="do">
+        <li>到 <b class="key">地圖</b>，按右邊<b>最上面</b>的路線按鈕（像一條彎曲的線）。</li>
+        <li>沿著要走的路，<b>一點一點按</b>地圖。下方會顯示總長度。</li>
+        <li>按錯了？按 <span class="btnlike plain"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false" style="vertical-align:-3px"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span> 可以收回上一點。</li>
+        <li>畫好按 <span class="btnlike">完成</span>，填路線名稱、選負責的隊伍和顏色。</li>
+        <li>按 <span class="btnlike">儲存並上傳</span>。</li>
+      </ol>
+      <div class="shots">
+        <figure>
+          <div class="phone" aria-hidden="true">
+            <div class="ph-top"><span>牡丹岩</span></div>
+            <div class="ph-map">
+              <svg viewBox="0 0 200 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><polyline points="150,200 120,150 90,120 55,70" fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#f97316" stroke="#fff" stroke-width="2"><circle cx="150" cy="200" r="5"/><circle cx="120" cy="150" r="5"/><circle cx="90" cy="120" r="5"/><circle cx="55" cy="70" r="7"/></g></svg>
+              <div class="ph-card" style="position:absolute;left:6px;right:6px;bottom:8px;display:flex;align-items:center;gap:4px"><b style="flex:1;white-space:nowrap">1.67 km</b><span class="ph-btn">↶</span><span class="ph-btn">取消</span><span class="ph-btn pri tap">完成</span></div>
+            </div>
+            <div class="ph-tab"><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>摘要</span><span class="on"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>地圖</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>定位</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>任務</span><span class=""><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>案件</span></div>
+          </div>
+          <figcaption>一點一點按，畫好按「完成」</figcaption>
+        </figure>
+      </div>
+      <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19z"/></svg><div><p>沒訊號時路線會先存在手機。回到有網路的地方，到「案件」頁按 <b>同步最新資料</b>，就會傳給全隊。</p></div></div>
+      <p>所有路線都列在 <b class="key">任務</b> 頁的「搜救路線」，點一下就會在地圖上顯示。在地圖上點路線，可以 <b>編輯</b>、<b>刪除</b>，或匯出 <b>GPX</b> 給 GPS 機使用。</p>
+    </article>
+
+    <article class="step" id="s10">
+      <div class="step-head"><span class="num">10</span><h3>勾選裝備清單</h3></div>
+      <ol class="do">
+        <li>按最下面的 <b class="key">任務</b>。</li>
+        <li>往下滑到裝備清單，帶了的東西就按一下打勾。</li>
+      </ol>
+      <p class="muted">打勾只存在你自己的手機，不會影響別人。要重新開始，按最下面的 <b>重置所有勾選</b>。</p>
+    </article>
+  </section>
+
+  <!-- ===================== 其他 ===================== -->
+  <section class="part" aria-labelledby="p3">
+    <div class="part-head"><span class="tag">其他</span><h2 id="p3">資料組使用</h2></div>
+    <article class="step" id="s11">
+      <div class="step-head"><span class="num">11</span><h3>新增或修改案件</h3></div>
+      <ol class="do">
+        <li><b>新增</b>：到 <b class="key">案件</b> 頁，按 <span class="btnlike plain">＋ 新增案件</span>。</li>
+        <li><b>修改</b>：在 <b class="key">摘要</b> 頁最下面按 <span class="btnlike plain">編輯案件資料</span>。</li>
+        <li>每一區（基本資料、失聯者、穿著…）點標題可以打開或收起來。<b>只有「案件短名」一定要填</b>，其他知道多少填多少。</li>
+        <li>座標可以直接輸入，也可以按 <span class="btnlike plain"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false" style="vertical-align:-3px"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span> 在地圖上點選位置。</li>
+        <li>填好按最下面的 <span class="btnlike">儲存並上傳</span>，全隊同步後就看得到。</li>
+      </ol>
+      <p class="muted">填到一半離開也沒關係，App 會自動保存草稿。要調整裝備清單，按右上角的 <b>齒輪</b> 進入設定。</p>
+    </article>
+  </section>
+
+  <section class="part" id="legend" aria-labelledby="p4">
+    <div class="part-head"><span class="tag">對照表</span><h2 id="p4">按鈕圖示是什麼意思</h2></div>
+    <div class="legend">
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></i><span><b>摘要</b>：案件重點資料</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></i><span><b>地圖</b>：登山地圖</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></i><span><b>定位</b>：我的座標；在地圖上是「找自己」</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></i><span><b>任務</b>：分組、路線、裝備清單</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></i><span><b>案件</b>：同步、新增、切換案件</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></i><span><b>齒輪</b>：設定、裝備清單編輯</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></i><span><b>路線</b>：畫搜救路線</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg></i><span><b>圖層</b>：航跡檔、圖例</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></i><span><b>下載</b>：存離線地圖</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></i><span><b>地圖選點</b>：在地圖上點位置</span></div>
+    </div>
+  </section>
+
+  <section class="part" id="faq" aria-labelledby="p5">
+    <div class="part-head"><span class="tag">問題</span><h2 id="p5">遇到問題怎麼辦</h2></div>
+    <details class="faq"><summary>沒有訊號真的能用嗎？</summary><div><p>可以。只要先在有網路時做完「第一次使用」的 5 個步驟，並且<b>從桌面圖示打開</b>，案件資料、已下載的地圖、定位都能用。</p><p>只有「同步最新資料」和「上傳」需要網路。</p></div></details>
+    <details class="faq"><summary>地圖一片空白、看不到地形？</summary><div><p>那個區域的地圖還沒下載。回到有網路的地方，照第 4 步再下載一次。</p></div></details>
+    <details class="faq"><summary>座標一直出不來，或誤差很大？</summary><div><p>請走到<b>天空看得到的空曠地方</b>，等 1～2 分鐘。森林、山谷裡會比較慢、比較不準。畫面上「精度 ±多少公尺」越小越準。</p><p>如果顯示「未允許定位權限」：iPhone 到「設定 → 隱私權與安全性 → 定位服務 → Safari」開啟；Android 到「設定 → 應用程式 → Chrome → 權限 → 位置」開啟。</p></div></details>
+    <details class="faq"><summary>登入時出現「已封鎖存取權」或「沒有權限」？</summary><div><p>你的 Google 帳號還沒被加入。請把你的 Gmail 傳給資料組，請他們把你加入名單後再試一次。</p></div></details>
+    <details class="faq"><summary>看不到最新的案件內容？</summary><div><p>到「案件」頁按 <b>同步最新資料</b>（需要網路）。</p></div></details>
+    <details class="faq"><summary>按「儲存並上傳」後說「已存在本機」？</summary><div><p>代表現在沒網路或上傳失敗，資料已經先存在你的手機，不會不見。回到有網路的地方按 <b>同步最新資料</b> 就會補上傳。</p></div></details>
+    <details class="faq"><summary>App 有新版本怎麼更新？</summary><div><p>有網路時打開 App，它會自己在背景更新。<b>把 App 關掉再打開一次</b>就是新版。</p></div></details>
+    <details class="faq"><summary>不小心把桌面圖示刪掉了？</summary><div><p>照第 1、2 步重新加回桌面，再按一次同步就好。已下載的地圖可能要重新下載。</p></div></details>
+  </section>
+
+  <footer>
+    <p>有其他問題，請洽搜救隊資料組。</p>
+    <p><a class="back" href="./">打開搜救資訊 App</a></p>
+  </footer>
+</main>
+
+<script>
+  // 字體大小（記在這支手機）
+  const root = document.documentElement;
+  const sizeBtns = document.querySelectorAll('.size button');
+  const setSize = (px) => {
+    root.style.setProperty('--fs', px + 'px');
+    sizeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fs === String(px))));
+    try { localStorage.setItem('guideFont', px); } catch (e) {}
+  };
+  sizeBtns.forEach((b) => b.addEventListener('click', () => setSize(b.dataset.fs)));
+  try { const saved = localStorage.getItem('guideFont'); if (saved) setSize(saved); } catch (e) {}
+
+  // iPhone / Android 分頁，預設依手機判斷
+  const tabs = { ios: document.getElementById('tab-ios'), android: document.getElementById('tab-android') };
+  const panes = { ios: document.getElementById('pane-ios'), android: document.getElementById('pane-android') };
+  const show = (k) => Object.keys(tabs).forEach((x) => { tabs[x].setAttribute('aria-selected', String(x === k)); panes[x].hidden = x !== k; });
+  tabs.ios.addEventListener('click', () => show('ios'));
+  tabs.android.addEventListener('click', () => show('android'));
+  if (/Android/i.test(navigator.userAgent)) show('android');
+
+  // 複製網址
+  document.getElementById('copyUrl').addEventListener('click', async (e) => {
+    const text = document.getElementById('appUrl').textContent;
+    try { await navigator.clipboard.writeText(text); e.target.textContent = '已複製！'; }
+    catch (err) { e.target.textContent = '請長按網址複製'; }
+    setTimeout(() => (e.target.textContent = '複製網址'), 2500);
+  });
+</script>
+</body>
+</html>

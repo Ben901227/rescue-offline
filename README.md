@@ -4,6 +4,8 @@
 
 **網址：https://ben901227.github.io/rescue-offline/**（手機開啟後「加入主畫面」即可離線使用）
 
+**使用教學：https://ben901227.github.io/rescue-offline/guide.html**（圖文、大字，App 右上角「?」也能打開）
+
 ## 個資原則
 
 - 網站本身**不含任何案件資料**。案件存在只分享給搜救人員的 Google Drive 資料夾，隊員用 Google 登入同步到自己手機（IndexedDB）。
@@ -24,7 +26,7 @@
 2. 「OAuth 同意畫面」：使用者類型選「外部」，加入範圍 `drive`（讀寫，App 儲存時要上傳案件檔）。
    未送審前為「測試」狀態，最多 100 位測試使用者，需把隊員 Gmail 逐一加入「測試使用者」；人數更多或要免加名單，需送 Google 審查（`drive` 屬受限範圍）。若協會有 Google Workspace，選「內部」即可免審查。
 3. 「憑證」→ 建立「OAuth 用戶端 ID」→ 類型「網頁應用程式」，「已授權的 JavaScript 來源」加入部署網址（例如 `https://<帳號>.github.io`）與 `http://localhost:5173`。
-4. 把用戶端 ID 和資料夾 ID 填進 `js/config.js`（全隊預設），或請隊員在 App ⚙︎ 設定頁填入。兩者都不是機密。
+4. 把用戶端 ID 和資料夾 ID 填進 `js/config.js` 後重新部署（隊員端不需要也不能修改）。兩者都不是機密，能讀到什麼由資料夾的共用設定決定。
 
 ## 規劃搜救路線（可離線）
 
