@@ -10,5 +10,5 @@ test('js/version.js 與 sw.js 的版本一致', () => {
 
 test('sw.js 的預快取清單包含所有 js 檔', () => {
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-  for (const f of ['js/version.js', 'js/update.js', 'js/log.js', 'js/lib/logFormat.js', 'guide.html']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const f of ['js/version.js', 'js/update.js', 'js/log.js', 'js/lib/logFormat.js', 'js/cloud.js', 'js/photos.js', 'js/lib/fsCodec.js', 'js/views/admin.js', 'vendor/firebase/firebase.js', 'guide.html']) assert.ok(sw.includes(`'${f}'`), f);
 });

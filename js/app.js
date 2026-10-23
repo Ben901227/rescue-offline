@@ -9,9 +9,11 @@ import * as tasks from './views/tasks.js';
 import * as cases from './views/cases.js';
 import * as settings from './views/settings.js';
 import * as edit from './views/editor.js';
+import * as admin from './views/admin.js';
 import { checkUpdate, applyUpdate } from './update.js';
+import * as cloud from './cloud.js';
 
-const views = { summary, map, gps, tasks, cases, settings, edit };
+const views = { summary, map, gps, tasks, cases, settings, edit, admin };
 const viewEl = document.getElementById('view');
 
 const app = {
@@ -57,8 +59,8 @@ async function route() {
   document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.tab === name));
   active = views[name];
   window.scrollTo(0, 0);
-  if (!app.current && !['cases', 'gps', 'settings', 'edit'].includes(name)) {
-    viewEl.innerHTML = `<div class="card empty"><p>尚未選擇案件</p><a class="btn primary" href="#/cases">匯入或選擇案件</a></div>`;
+  if (!app.current && !['cases', 'gps', 'settings', 'edit', 'admin'].includes(name)) {
+    viewEl.innerHTML = `<div class="card empty"><p>尚未選擇案件</p><a class="btn primary" href="#/cases">登入或選擇案件</a></div>`;
     return;
   }
   await active.render(viewEl, app);
@@ -123,5 +125,19 @@ if (lastVersion !== APP_VERSION) {
 }
 
 await app.reload();
+
+// 雲端：登入狀態與資料變動時，重畫不會打斷操作的頁面（地圖、編輯中的頁面不重畫）
+let currentTab = () => (location.hash.match(/^#\/(\w+)/) || [])[1] || 'summary';
+const SAFE_RERENDER = ['summary', 'tasks', 'cases'];
+window.addEventListener('cloud-data', () => SAFE_RERENDER.includes(currentTab()) && route());
+let lastCloud = '';
+cloud.onChange((s) => {
+  const key = `${s.user?.email}|${s.role}|${s.status}`;
+  if (key === lastCloud) return;
+  lastCloud = key;
+  if (currentTab() === 'cases') route();
+});
+cloud.start(app);
+
 if (!app.current && !location.hash.startsWith('#/cases')) app.go('cases');
 else await route();

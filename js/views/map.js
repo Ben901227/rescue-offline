@@ -5,7 +5,8 @@ import { wgs84ToTwd97 } from '../lib/twd97.js';
 import { parseTrackFile, toGpx } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
-import { prepare, beginAuth, saveAndUpload } from '../drive.js';
+import { saveAndUpload, state as cloud } from '../cloud.js';
+import { addPhoto, listPhotos, photoUrl, openLightbox, releaseUrls } from '../photos.js';
 import * as log from '../log.js';
 import { subscribe } from '../geo.js';
 import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL, fmtDist } from '../markers.js';
@@ -36,7 +37,6 @@ function hashParams() {
 
 export async function render(el, app) {
   let c = app.current;
-  prepare().catch(() => {});
   el.className = 'full';
   el.innerHTML = `
     <div class="map-wrap">
@@ -69,6 +69,19 @@ export async function render(el, app) {
 
   const routeLayer = L.featureGroup().addTo(map);
   const markerLayer = L.layerGroup().addTo(map);
+  const photoLayer = L.layerGroup().addTo(map);
+  let photos = [];
+  // 有座標的照片標在地圖上（相機圖示），點開看縮圖，再點放大
+  async function drawPhotos() {
+    photoLayer.clearLayers();
+    if (!c || !cloud.user) return;
+    photos = (await listPhotos(c.id)).filter((p) => p.lat != null);
+    for (const p of photos) {
+      L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: `<div class="pin photo">${icon('camera', { size: 14 })}</div>`, iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -12] }) })
+        .bindPopup(`<button type="button" class="popup-photo" data-photo-open="${esc(p.id)}" aria-label="放大照片"><img src="${photoUrl(p)}" alt=""></button>${p.caption ? `<br><b>${esc(p.caption)}</b>` : ''}<br><span class="muted small">${esc((p.created || '').replace('T', ' ').slice(0, 16))}・${esc((p.by || '').split('@')[0])}</span>`)
+        .addTo(photoLayer);
+    }
+  }
   const trackLayer = L.featureGroup().addTo(map);
   let markers = [];
   let tracks = [];
@@ -134,6 +147,7 @@ export async function render(el, app) {
   }
 
   await Promise.all([drawMarkers(), drawTracks()]);
+  drawPhotos();
   drawRoutes();
 
   // 初始視角：網址指定 > 案件範圍 > 標記與航跡 > 台灣
@@ -252,7 +266,6 @@ export async function render(el, app) {
       <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="rtSave">${icon('cloud')}儲存並上傳</button></div>
       <p class="muted small" style="margin-top:6px">離線時先存在手機，連線後同步會自動上傳給全隊。</p>`);
     s.querySelector('#rtSave').onclick = async () => {
-      const auth = beginAuth(); // 點擊後第一件事，Google 登入視窗才不會被擋
       const route = {
         id: drawing.id || `r${Date.now().toString(36)}`,
         name: s.querySelector('#rtName').value.trim() || '未命名路線',
@@ -262,18 +275,18 @@ export async function render(el, app) {
         points: drawing.points,
         updated: new Date().toISOString(),
       };
-      await saveRoutes((routes) => (routes.some((r) => r.id === route.id) ? routes.map((r) => (r.id === route.id ? route : r)) : [...routes, route]), auth);
+      await saveRoutes((routes) => (routes.some((r) => r.id === route.id) ? routes.map((r) => (r.id === route.id ? route : r)) : [...routes, route]));
       closeSheet();
       stopDrawing();
     };
   };
 
-  async function saveRoutes(change, auth) {
+  async function saveRoutes(change) {
     const raw = await db.get('cases', c.id);
     const next = { ...raw, routes: change(raw.routes || []) };
     const errors = validateCase(next);
     if (errors.length) return toast(errors.join('；'), 5000);
-    const r = await saveAndUpload(next, auth);
+    const r = await saveAndUpload(next);
     await app.reload();
     c = app.current;
     toast(r.uploaded ? '路線已儲存並上傳' : r.reason, r.uploaded ? 2400 : 6000);
@@ -283,6 +296,10 @@ export async function render(el, app) {
   map.on('popupopen', (e) => {
     if (drawing) return map.closePopup(); // 規劃時點到既有路線只加點，不開資訊框
     const node = e.popup.getElement();
+    node.querySelector('[data-photo-open]')?.addEventListener('click', (ev) => {
+      const p = photos.find((x) => x.id === ev.currentTarget.dataset.photoOpen);
+      if (p) openLightbox(p);
+    });
     node.querySelector('[data-route-edit]')?.addEventListener('click', (ev) => {
       startDrawing(c.routes.find((r) => r.id === ev.currentTarget.dataset.routeEdit));
     });
@@ -293,9 +310,8 @@ export async function render(el, app) {
     node.querySelector('[data-route-del]')?.addEventListener('click', async (ev) => {
       const id = ev.currentTarget.dataset.routeDel;
       if (!confirm('刪除這條路線？全隊同步後都會移除。')) return;
-      const auth = beginAuth();
       map.closePopup();
-      await saveRoutes((routes) => routes.filter((r) => r.id !== id), auth);
+      await saveRoutes((routes) => routes.filter((r) => r.id !== id));
       drawRoutes();
     });
     node.querySelector('[data-del-point]')?.addEventListener('click', async (ev) => {
@@ -344,6 +360,7 @@ export async function render(el, app) {
       <p class="mono">${coordText(lat, lng)}</p>
       <div class="btn-row" style="margin-top:12px">
         <button class="btn primary" id="addMark">加標記</button>
+        ${cloud.user ? `<button class="btn" id="addPhoto">${icon('camera', { size: 18 })}拍照／加照片</button>` : ''}
         <button class="btn" id="copyPt">複製座標</button>
       </div>
       ${missing.length ? `
@@ -351,6 +368,28 @@ export async function render(el, app) {
         <div class="btn-row" style="margin-top:6px">${missing.map((m) => `<button class="btn small" data-set="${esc(m.key)}">${esc(m.name)}${m.patched ? '（重設）' : ''}</button>`).join('')}</div>
         <p class="muted small" style="margin-top:6px">只存在本機，不會改動原始案件檔。</p>` : ''}
     `);
+    s.querySelector('#addPhoto')?.addEventListener('click', async () => {
+      // 手機會直接開相機（也可以選相簿），照片標在這個位置
+      const file = await new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.setAttribute('capture', 'environment');
+        input.onchange = () => resolve(input.files[0] || null);
+        input.click();
+      });
+      if (!file) return;
+      const caption = prompt('照片說明（例如：發現腳印）', '') ?? '';
+      closeSheet();
+      toast('壓縮並上傳中…', 4000);
+      try {
+        await addPhoto(c.id, file, { kind: 'scene', caption, lat: +lat.toFixed(6), lng: +lng.toFixed(6) });
+        toast(navigator.onLine ? '照片已上傳' : '照片已存在手機，連線後上傳');
+      } catch (err) {
+        toast(`照片上傳失敗：${err.message}`, 5000);
+      }
+      drawPhotos();
+    });
     s.querySelector('#addMark').onclick = async () => {
       const name = prompt('標記名稱', `標記 ${fmtTime()}`);
       if (name == null) return;
@@ -485,6 +524,7 @@ export async function render(el, app) {
 }
 
 export function destroy() {
+  releaseUrls();
   abort?.abort();
   unsub?.();
   unsub = null;

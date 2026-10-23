@@ -335,3 +335,32 @@ details.fold[open] > .fold-body { margin-top: 10px; }
 .day-list > li:first-child { border-top: 0; padding-top: 0; }
 .day-list .when { font-weight: 700; }
 .day-list ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* 照片 */
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+.thumb { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface-2); aspect-ratio: 1; cursor: zoom-in; min-height: 44px; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-notes { margin: 0; padding-left: 18px; font-size: .9rem; }
+.photo-admin { list-style: none; margin: 10px 0 0; padding: 0; }
+.photo-admin li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.photo-admin li:first-child { border-top: 0; }
+.photo-admin .thumb { width: 64px; flex: none; }
+.lightbox { position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px); gap: 10px; }
+.lightbox img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; }
+.lightbox-info { color: #f5f5f4; text-align: center; }
+.lightbox-info .small { color: #d6d3d1; }
+.lightbox-close { min-width: 120px; }
+.pin.photo { width: 26px; height: 26px; background: #f59e0b; display: grid; place-items: center; color: #1c1917; border-width: 2px; }
+.popup-photo { padding: 0; border: 0; background: none; cursor: zoom-in; display: block; }
+.popup-photo img { width: 180px; max-width: 60vw; border-radius: 8px; display: block; }
+
+/* 管理頁 */
+.member-list { list-style: none; margin: 0; padding: 0; }
+.member-list li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.member-list li:first-child { border-top: 0; }
+.log-text { white-space: pre-wrap; font-size: .75rem; background: var(--surface-2); padding: 10px; border-radius: 10px; max-height: 55vh; overflow: auto; }
+
+/* iOS Safari 的日期欄位有固定最小寬度，會撐出容器；改成跟一般輸入框一樣 */
+input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; text-align: left; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: .7; }

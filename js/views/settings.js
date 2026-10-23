@@ -7,7 +7,7 @@ import { fmtStamp, LEVEL_LABEL } from '../lib/logFormat.js';
 import { copyText } from '../ui.js';
 import { db } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
-import { driveSettingsHtml, bindDriveSettings, prepare, beginAuth, saveAndUpload } from '../drive.js';
+import { saveAndUpload, state as cloud, signOut, isAdmin } from '../cloud.js';
 
 const newId = () => `i${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -30,7 +30,15 @@ export async function render(el, app) {
     <div class="stack">
       <h1 style="font-size:1.3rem">設定</h1>
       <section class="card" id="clCard"></section>
-      <section class="card" id="driveCard">${driveSettingsHtml()}</section>
+      <section class="card" id="accountCard">
+        <h2>帳號</h2>
+        <p>${cloud.user ? `目前登入：<b>${esc(cloud.user.email)}</b>${cloud.role ? ` <span class="chip ${cloud.role === 'admin' ? 'warn' : 'muted'}">${cloud.role === 'admin' ? '管理員' : '隊員'}</span>` : ''}` : '尚未登入（到「案件」頁登入）'}</p>
+        <p class="muted small" style="margin-top:4px">登入時只分享 email，App 不會存取你的 Google 雲端硬碟。</p>
+        <div class="btn-row" style="margin-top:10px">
+          ${isAdmin() ? `<a class="btn" href="#/admin">${icon('settings')}管理成員與記錄</a>` : ''}
+          <button class="btn danger" id="signOutBtn" ${cloud.user ? '' : 'disabled'}>登出</button>
+        </div>
+      </section>
       <section class="card" id="themeCard">
         <h2>外觀</h2>
         <div class="seg" role="group" aria-label="顯示模式">
@@ -63,7 +71,12 @@ export async function render(el, app) {
       <a class="btn" style="width:100%" href="guide.html">${icon('help')}使用教學</a>
       <p class="muted small" style="text-align:center"><a href="#/cases">← 回案件列表</a></p>
     </div>`;
-  bindDriveSettings(el.querySelector('#driveCard'), app);
+  el.querySelector('#signOutBtn').onclick = async () => {
+    if (!confirm('登出後，這支手機上的雲端案件與照片會一併清除（離線準備要重做）。確定登出？')) return;
+    await signOut();
+    toast('已登出');
+    app.go('cases');
+  };
   const verStatus = el.querySelector('#verStatus');
   const verUpdate = el.querySelector('#verUpdate');
   const runCheck = async () => {
@@ -147,7 +160,6 @@ export async function render(el, app) {
     drawLogs();
   };
   drawLogs();
-  prepare().catch(() => {});
 
   const card = el.querySelector('#clCard');
   if (!c) {
@@ -279,12 +291,11 @@ export async function render(el, app) {
     }
 
     if (b.id !== 'saveCl') return;
-    const auth = beginAuth(); // 點擊後第一件事，Google 登入視窗才不會被擋
     const out = { ...raw, checklist: clean(groups) };
     const errors = validateCase(out);
     if (errors.length) return toast(errors.join('；'), 4000);
     b.disabled = true;
-    const r = await saveAndUpload(out, auth);
+    const r = await saveAndUpload(out);
     Object.assign(raw, await db.get('cases', c.id));
     await app.reload();
     b.disabled = false;

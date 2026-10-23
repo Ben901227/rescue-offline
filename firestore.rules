@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// 搜救資訊 App 的資料權限。
+// 只有 members 名單裡的 Google 帳號能讀寫案件；管理員管理名單、看全部使用記錄。
+// 第一位管理員寫死在 OWNER，避免名單是空的時候沒人能進來。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function OWNER() { return 'ben901227@gmail.com'; }
+
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true;
+    }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function memberDoc() { return /databases/$(database)/documents/members/$(myEmail()); }
+    function isOwner() { return signedIn() && myEmail() == OWNER(); }
+    function isMember() { return isOwner() || (signedIn() && exists(memberDoc())); }
+    function isAdmin() { return isOwner() || (signedIn() && exists(memberDoc()) && get(memberDoc()).data.role == 'admin'); }
+
+    // 成員名單：文件 ID 是小寫 email
+    match /members/{email} {
+      allow read: if isAdmin() || (signedIn() && email == myEmail());
+      allow create, update: if isAdmin()
+        && request.resource.data.role in ['admin', 'member']
+        && email == email.lower()
+        && email != OWNER();
+      allow delete: if isAdmin() && email != OWNER();
+    }
+
+    // 案件：成員可讀寫，只有管理員能刪除
+    match /cases/{caseId} {
+      allow read: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.id == caseId
+        && request.resource.data.meta.name is string
+        && request.resource.data.meta.name.size() > 0;
+      allow delete: if isAdmin();
+
+      // 搜救路線：每條一份，避免多人同時編輯互相覆蓋
+      match /routes/{routeId} {
+        allow read: if isMember();
+        allow create, update: if isMember()
+          && request.resource.data.points is list
+          && request.resource.data.points.size() >= 2
+          && request.resource.data.points.size() <= 2000;
+        allow delete: if isMember();
+      }
+
+      // 照片：壓縮圖與縮圖直接存在文件裡（bytes），限制大小避免塞爆
+      match /photos/{photoId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && request.resource.data.image is bytes
+          && request.resource.data.image.size() <= 700 * 1024
+          && request.resource.data.thumb is bytes
+          && request.resource.data.thumb.size() <= 80 * 1024
+          && request.resource.data.by == myEmail();
+        allow update: if isMember()
+          && request.resource.data.image == resource.data.image
+          && request.resource.data.thumb == resource.data.thumb;
+        allow delete: if isAdmin() || (isMember() && resource.data.by == myEmail());
+      }
+    }
+
+    // 使用記錄：每支手機一份；只能寫自己的，管理員能看全部
+    match /logs/{deviceKey} {
+      allow read: if isAdmin() || (isMember() && resource.data.account == myEmail());
+      allow create, update: if isMember()
+        && request.resource.data.account == myEmail()
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 300 * 1024
+        && (resource == null || resource.data.account == myEmail());
+      allow delete: if isAdmin();
+    }
+  }
+}

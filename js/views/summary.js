@@ -2,6 +2,8 @@ import { esc, has, nl2br } from '../ui.js';
 import { icon } from '../icons.js';
 import { caseStatus } from '../lib/caseSchema.js';
 import { wgs84ToTwd97 } from '../lib/twd97.js';
+import { listPhotos, thumbsHtml, bindThumbs, releaseUrls } from '../photos.js';
+import { state as cloud } from '../cloud.js';
 
 const telLink = (phone) => `<a class="btn small primary" href="tel:${esc(phone.replace(/[^\d+]/g, ''))}">撥打</a>`;
 
@@ -88,6 +90,7 @@ function subjectCard(c) {
     'subject',
     '失聯者',
     `
+      <div id="subjectPhotos"></div>
       <p style="font-size:1.25rem;font-weight:700">${esc(head || '（未填）')}</p>
       ${basics ? `<p class="muted">${esc(basics)}</p>` : ''}
       ${has(c.clothing) ? `<h3 style="margin-top:10px">當天穿著</h3><div class="looks" style="margin-top:6px">${c.clothing.map((x) => `<span><b>${esc(x.item)}</b>${esc(x.desc)}</span>`).join('')}</div>` : ''}
@@ -224,11 +227,13 @@ export function render(el, app) {
       ${searchLogCard(c)}
       ${timelineCard(c)}
       ${areaCard(c)}
+      ${cloud.user ? fold('photos', '現場照片', '<div id="scenePhotos"><p class="muted small">讀取中…</p></div>') : ''}
       <div class="btn-row"><a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a></div>
       <p class="muted small" style="text-align:center">資料來源：${esc(c.meta.source || '')}　更新：${esc(c.meta.updated || '')}</p>
     </div>`;
 
   const wrap = el.firstElementChild;
+  loadPhotos(wrap, c);
   // 全部展開／收合
   wrap.insertAdjacentHTML(
     'afterbegin',
@@ -257,4 +262,32 @@ export function render(el, app) {
       wrap.querySelectorAll('details.fold').forEach((d) => (d.open = open));
     };
   });
+}
+
+// 照片：失聯者照片放在「失聯者」區塊最上面；現場照片另成一區（離線時用手機上的快取）
+async function loadPhotos(wrap, c) {
+  if (!cloud.user) return;
+  const list = await listPhotos(c.id);
+  const subject = list.filter((p) => p.kind === 'subject');
+  const scene = list.filter((p) => p.kind !== 'subject');
+  const sp = wrap.querySelector('#subjectPhotos');
+  if (sp && subject.length) {
+    sp.innerHTML = thumbsHtml(subject);
+    bindThumbs(sp, subject);
+  }
+  const sc = wrap.querySelector('#scenePhotos');
+  if (sc) {
+    sc.innerHTML = scene.length
+      ? thumbsHtml(scene) +
+        `<ul class="photo-notes">${scene
+          .filter((p) => p.caption || p.lat != null)
+          .map((p) => `<li>${esc(p.caption || '（無說明）')}${p.lat != null ? `　<a href="#/map?lat=${p.lat}&lng=${p.lng}">在地圖上看</a>` : ''}</li>`)
+          .join('')}</ul>`
+      : '<p class="muted small">還沒有現場照片。在地圖上按住某個位置，可以拍照並標在那裡。</p>';
+    bindThumbs(sc, scene);
+  }
+}
+
+export function destroy() {
+  releaseUrls();
 }

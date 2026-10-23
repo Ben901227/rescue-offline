@@ -306,21 +306,21 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
 
     <article class="step" id="s3">
       <div class="step-head"><span class="num">3</span><h3>用 Google 帳號取得案件</h3></div>
-      <p>案件資料放在搜救隊的 Google 雲端硬碟，只有被加入的隊員看得到。</p>
+      <p>案件資料放在搜救隊的雲端資料庫，只有被管理員加入名單的隊員看得到。登入時<b>只會分享你的 email</b>，App 不會碰你的 Google 雲端硬碟。</p>
       <ol class="do">
         <li>從桌面圖示打開 App。</li>
         <li>按最下面的 <b class="key">案件</b>（資料夾圖示）。</li>
-        <li>按 <span class="btnlike">以 Google 登入並同步</span>。</li>
-        <li>選你的 Google 帳號（Gmail）。</li>
-        <li>如果出現「<b>Google 尚未驗證這個應用程式</b>」，這是正常的，請按 <b class="key">繼續</b>；再按 <b class="key">允許</b>。</li>
+        <li>按 <span class="btnlike">以 Google 登入</span>。</li>
+        <li>選你的 Google 帳號（Gmail），按 <b class="key">繼續</b>。</li>
+        <li>畫面只會詢問「查看你的電子郵件地址」，這是正常的。</li>
       </ol>
       <div class="shots">
         <figure>
           <div class="phone" aria-hidden="true">
             <div class="ph-top"><span>搜救資訊</span><span class="sp"></span></div>
             <div class="ph-body">
-              <div class="ph-card"><b>Google Drive 同步</b><br>用搜救帳號登入 Google，取得有權限的案件資料。
-                <div class="ph-btn pri tap" style="margin-top:6px">以 Google 登入並同步</div></div>
+              <div class="ph-card"><b>雲端同步</b><br>用 Google 帳號登入，取得你有權限的案件。
+                <div class="ph-btn pri tap" style="margin-top:6px">以 Google 登入</div></div>
               <div class="ph-btn">＋ 新增案件</div>
               <div class="ph-card"><b>離線準備</b><br>○ 加入主畫面<br>○ 同步或新增案件資料</div>
             </div>
@@ -329,8 +329,8 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
           <figcaption>「案件」頁，按橘色按鈕</figcaption>
         </figure>
       </div>
-      <div class="callout ok" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p>成功後會出現案件名稱，例如「牡丹岩」。之後有網路時，再按一次 <b>同步最新資料</b> 就會更新。</p></div></div>
-      <div class="callout warn" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><div><p>出現「<b>已封鎖存取權</b>」或「<b>沒有權限</b>」：表示你的帳號還沒被加入，請把你的 Gmail 告訴資料組。</p></div></div>
+      <div class="callout ok" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><p>成功後會出現案件名稱，例如「牡丹岩」。之後只要有網路，別人更新的資料會<b>自動出現</b>。</p></div></div>
+      <div class="callout warn" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><div><p>出現「<b>不在成員名單內</b>」：表示你的帳號還沒被加入，請把你的 Gmail 告訴管理員。</p></div></div>
     </article>
 
     <article class="step" id="s4">
@@ -436,6 +436,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
         <li><b>找自己在哪裡</b>：按右下角 <b class="key">準心</b> 圓形按鈕，藍色圓點就是你。按一次後地圖會跟著你移動。</li>
         <li><b>做記號</b>：用手指在地圖上<b>按住不放約 1 秒</b>，選 <span class="btnlike">加標記</span>，取個名字。</li>
         <li><b>看某個點的座標</b>：一樣按住不放，會顯示座標，可以按 <span class="btnlike plain">複製座標</span>。</li>
+        <li><b>拍照標在地圖上</b>：按住地圖上的位置，選 <span class="btnlike plain">拍照／加照片</span>，照片會標在那裡，全隊都看得到。點地圖上的橘色相機圖示可以看照片。</li>
       </ul>
       <div class="shots">
         <figure>
@@ -484,7 +485,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
           <figcaption>一點一點按，畫好按「完成」</figcaption>
         </figure>
       </div>
-      <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19z"/></svg><div><p>沒訊號時路線會先存在手機。回到有網路的地方，到「案件」頁按 <b>同步最新資料</b>，就會傳給全隊。</p></div></div>
+      <div class="callout tip" role="note"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19z"/></svg><div><p>沒訊號時路線會先存在手機，回到有網路的地方會<b>自動</b>傳給全隊。</p></div></div>
       <p>所有路線都列在 <b class="key">任務</b> 頁的「搜救路線」，點一下就會在地圖上顯示。在地圖上點路線，可以 <b>編輯</b>、<b>刪除</b>，或匯出 <b>GPX</b> 給 GPS 機使用。</p>
     </article>
 
@@ -508,7 +509,8 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
         <li><b>修改</b>：在 <b class="key">摘要</b> 頁最下面按 <span class="btnlike plain">編輯案件資料</span>。</li>
         <li>每一區（基本資料、失聯者、穿著…）點標題可以打開或收起來。<b>只有「案件短名」一定要填</b>，其他知道多少填多少。</li>
         <li>座標可以直接輸入，也可以按 <span class="btnlike plain"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false" style="vertical-align:-3px"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span> 在地圖上點選位置。</li>
-        <li>填好按最下面的 <span class="btnlike">儲存並上傳</span>，全隊同步後就看得到。</li>
+        <li>填好按最下面的 <span class="btnlike">儲存並上傳</span>，全隊會自動收到。</li>
+        <li>要放照片：在編輯頁最下面按 <span class="btnlike plain">失聯者照片</span> 或 <span class="btnlike plain">現場照片</span>，選相簿的照片或直接拍照。照片會自動縮小再上傳。</li>
       </ol>
       <p class="muted">填到一半離開也沒關係，App 會自動保存草稿。要調整裝備清單，按右上角的 <b>齒輪</b> 進入設定。</p>
     </article>
@@ -535,12 +537,12 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
     <details class="faq"><summary>沒有訊號真的能用嗎？</summary><div><p>可以。只要先在有網路時做完「第一次使用」的 5 個步驟，並且<b>從桌面圖示打開</b>，案件資料、已下載的地圖、定位都能用。</p><p>只有「同步最新資料」和「上傳」需要網路。</p></div></details>
     <details class="faq"><summary>地圖一片空白、看不到地形？</summary><div><p>那個區域的地圖還沒下載。回到有網路的地方，照第 4 步再下載一次。</p></div></details>
     <details class="faq"><summary>座標一直出不來，或誤差很大？</summary><div><p>請走到<b>天空看得到的空曠地方</b>，等 1～2 分鐘。森林、山谷裡會比較慢、比較不準。畫面上「精度 ±多少公尺」越小越準。</p><p>如果顯示「未允許定位權限」：iPhone 到「設定 → 隱私權與安全性 → 定位服務 → Safari」開啟；Android 到「設定 → 應用程式 → Chrome → 權限 → 位置」開啟。</p></div></details>
-    <details class="faq"><summary>登入時出現「已封鎖存取權」或「沒有權限」？</summary><div><p>你的 Google 帳號還沒被加入。請把你的 Gmail 傳給資料組，請他們把你加入名單後再試一次。</p></div></details>
-    <details class="faq"><summary>看不到最新的案件內容？</summary><div><p>到「案件」頁按 <b>同步最新資料</b>（需要網路）。</p></div></details>
-    <details class="faq"><summary>按「儲存並上傳」後說「已存在本機」？</summary><div><p>代表現在沒網路或上傳失敗，資料已經先存在你的手機，不會不見。回到有網路的地方按 <b>同步最新資料</b> 就會補上傳。</p></div></details>
+    <details class="faq"><summary>登入後顯示「不在成員名單內」？</summary><div><p>你的 Google 帳號還沒被加入。請把你的 Gmail 傳給管理員，加入名單後重新打開 App 就好。</p></div></details>
+    <details class="faq"><summary>看不到最新的案件內容？</summary><div><p>有網路時會自動更新；如果還是沒有，到「案件」頁按 <b>同步最新資料</b>。</p></div></details>
+    <details class="faq"><summary>按「儲存並上傳」後說「已存在手機」？</summary><div><p>代表現在沒網路，資料已經先存在你的手機，不會不見。回到有網路的地方會自動上傳。</p></div></details>
     <details class="faq"><summary>怎麼知道 App 是不是最新版？怎麼更新？</summary><div><p>有網路時打開 App，如果有新版，<b>畫面上方會出現橘色的「有新版本」</b>，按 <b>更新</b> 就好。</p><p>也可以按右上角 <b>齒輪</b>，看「App 版本」：顯示「已是最新版」就不用做任何事；有新版時按 <b>立即更新</b>。</p><p class="muted">上山前，建議在有網路的地方先確認是最新版。</p></div></details>
     <details class="faq"><summary>畫面太暗或太亮？</summary><div><p>按右上角 <b>齒輪</b>，在「外觀」選 <b>淺色</b> 或 <b>深色</b>；選「自動」會跟著手機設定。</p></div></details>
-    <details class="faq"><summary>App 出問題，要怎麼回報給資料組？</summary><div><ol class="do"><li>按右上角 <b>齒輪</b>。</li><li>找到「使用記錄」，按 <span class="btnlike">複製記錄</span>。</li><li>打開 LINE，在和資料組的對話裡<b>長按 → 貼上</b>，再簡單說明發生什麼事。</li></ol><p class="muted">每次按「同步最新資料」時，使用記錄也會自動傳給資料組，所以有網路時同步一次，資料組就看得到。記錄裡是錯誤訊息、同步和更新的結果與你的帳號名稱，不含案件內容。</p></div></details>
+    <details class="faq"><summary>App 出問題，要怎麼回報給資料組？</summary><div><ol class="do"><li>按右上角 <b>齒輪</b>。</li><li>找到「使用記錄」，按 <span class="btnlike">複製記錄</span>。</li><li>打開 LINE，在和資料組的對話裡<b>長按 → 貼上</b>，再簡單說明發生什麼事。</li></ol><p class="muted">登入後有網路時，使用記錄會自動傳給管理員。記錄裡是錯誤訊息、同步和更新的結果與你的帳號名稱，不含案件內容。</p></div></details>
     <details class="faq"><summary>不小心把桌面圖示刪掉了？</summary><div><p>照第 1、2 步重新加回桌面，再按一次同步就好。已下載的地圖可能要重新下載。</p></div></details>
   </section>
 

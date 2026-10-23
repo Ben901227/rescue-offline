@@ -9,7 +9,9 @@ import { getPath, setPath, tidy } from '../lib/path.js';
 import { parseCoordinate, wgs84ToTwd97 } from '../lib/twd97.js';
 import { pickPoint, pickBounds } from '../mapPicker.js';
 import { TYPE_LABEL } from '../markers.js';
-import { prepare, beginAuth, saveAndUpload } from '../drive.js';
+import { saveAndUpload, state as cloud } from '../cloud.js';
+import { addPhoto, listPhotos, deletePhoto, photoUrl, openLightbox, KIND_LABEL, releaseUrls } from '../photos.js';
+import { pickFile } from '../ui.js';
 
 const MARKER_TYPES = ['ipp', 'camp', 'cp', 'poi'];
 const DRAFT_KEY = 'editorDraft';
@@ -216,7 +218,6 @@ export async function render(el, app) {
   const openSections = new Set([0]);
   let restoreOffer = savedDraft?.key === draftKey && JSON.stringify(savedDraft.data) !== JSON.stringify(draft);
 
-  prepare().catch(() => {});
 
   // 地圖選點的起始位置：搜索範圍中心，否則用已知的任一座標
   const nearPoint = () => {
@@ -253,14 +254,71 @@ export async function render(el, app) {
           <p class="small">${(draft.checklist || []).map((g) => `${esc(g.group)}（${g.items.length}）`).join('、') || '無'}</p>
           <p class="muted small" style="margin-top:4px">${original ? '<a href="#/settings">到設定頁編輯裝備清單</a>' : '新案件會套用東搜預設清單，儲存後可到設定頁調整。'}</p>
         </section>
+        ${original && cloud.user ? `<section class="card" id="photoCard">
+          <h2>照片</h2>
+          <p class="muted small">失聯者照片會顯示在摘要的「失聯者」區塊；現場照片另列一區。上傳前會自動壓縮，離線時先存在手機，連線後上傳。</p>
+          <div class="btn-row" style="margin-top:10px">
+            <button type="button" class="btn" data-photo-add="subject">${icon('plus', { size: 18 })}失聯者照片</button>
+            <button type="button" class="btn" data-photo-add="scene">${icon('plus', { size: 18 })}現場照片</button>
+          </div>
+          <ul class="photo-admin" id="photoList"><li class="muted small">讀取中…</li></ul>
+        </section>` : ''}
         <div class="btn-row editor-actions">
           <button class="btn primary" id="saveCase">${icon('cloud')}儲存並上傳</button>
         </div>
-        <p class="muted small" style="text-align:center">儲存後會同時上傳到 Google Drive，全隊同步即可看到。<br>輸入內容會自動保存為草稿，離開頁面也不會遺失。</p>
+        <p class="muted small" style="text-align:center">儲存後會同時上傳到雲端，全隊會自動收到更新。<br>輸入內容會自動保存為草稿，離開頁面也不會遺失。</p>
       </div>`;
     window.scrollTo(0, scrollY);
+    drawPhotos();
   };
+
+  let photos = [];
+  async function drawPhotos() {
+    const ul = root.querySelector('#photoList');
+    if (!ul) return;
+    photos = await listPhotos(original.id);
+    ul.innerHTML = photos.length
+      ? photos
+          .map(
+            (p) => `<li><button type="button" class="thumb" data-photo-view="${esc(p.id)}" aria-label="放大"><img src="${photoUrl(p)}" alt=""></button>
+              <span style="flex:1;min-width:0"><span class="chip ${p.kind === 'subject' ? 'warn' : 'muted'}">${KIND_LABEL[p.kind] || ''}</span> ${esc(p.caption || '')}
+              <br><span class="muted small">${esc((p.created || '').slice(0, 10))}・${esc((p.by || '').split('@')[0])}</span></span>
+              <button type="button" class="btn small danger" data-photo-del="${esc(p.id)}" aria-label="刪除照片">${icon('x')}</button></li>`
+          )
+          .join('')
+      : '<li class="muted small">還沒有照片</li>';
+  }
+
   draw();
+  root.addEventListener('click', async (e) => {
+    const pb = e.target.closest('[data-photo-add],[data-photo-view],[data-photo-del]');
+    if (!pb) return;
+    if (pb.dataset.photoView) return openLightbox(photos.find((p) => p.id === pb.dataset.photoView));
+    if (pb.dataset.photoDel) {
+      if (!confirm('刪除這張照片？全隊都會移除。')) return;
+      try {
+        await deletePhoto(original.id, pb.dataset.photoDel);
+      } catch (err) {
+        return toast(err.code === 'permission-denied' ? '只能刪除自己上傳的照片（管理員可刪全部）' : `刪除失敗：${err.message}`, 5000);
+      }
+      return drawPhotos();
+    }
+    const kind = pb.dataset.photoAdd;
+    const file = await pickFile('image/*');
+    if (!file) return;
+    const caption = prompt('照片說明（可留空）', kind === 'subject' ? '失聯者照片' : '') ?? '';
+    pb.disabled = true;
+    toast('壓縮並上傳中…', 4000);
+    try {
+      await addPhoto(original.id, file, { kind, caption });
+      toast(navigator.onLine ? '照片已上傳' : '照片已存在手機，連線後上傳');
+    } catch (err) {
+      toast(`照片上傳失敗：${err.message}`, 5000);
+    } finally {
+      pb.disabled = false;
+      drawPhotos();
+    }
+  });
 
   root.addEventListener('toggle', (e) => {
     const si = e.target.dataset?.sec;
@@ -379,11 +437,10 @@ export async function render(el, app) {
         }
         return toast(errors.join('；'), 5000);
       }
-      const auth = beginAuth(); // 驗證後、任何 await 之前呼叫，Google 登入視窗才不會被擋
       if (!original) out.id = await generateId(out.meta.reportDate);
       b.disabled = true;
       b.textContent = '儲存中…';
-      const r = await saveAndUpload(original?._sync ? { ...out, _sync: original._sync } : out, auth);
+      const r = await saveAndUpload({ ...out, routes: original?.routes || [] });
       await kv.del(DRAFT_KEY);
       await app.select(out.id);
       toast(r.uploaded ? '已儲存並上傳到 Drive' : r.reason, r.uploaded ? 2400 : 6000);
@@ -391,4 +448,8 @@ export async function render(el, app) {
     }
   });
 
+}
+
+export function destroy() {
+  releaseUrls();
 }
