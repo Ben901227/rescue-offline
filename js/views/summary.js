@@ -9,6 +9,25 @@ function row(label, value) {
   return has(value) ? `<dt>${esc(label)}</dt><dd>${nl2br(value)}</dd>` : '';
 }
 
+// 可摺疊的區塊；開合狀態記在這支手機（localStorage），下次打開維持
+const FOLD_KEY = 'summaryFolds';
+const folds = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(FOLD_KEY)) || {};
+  } catch {
+    return {};
+  }
+})();
+
+function fold(key, title, body, { cls = '', style = '', extra = '' } = {}) {
+  const open = folds[key] !== false;
+  return `
+    <details class="card fold ${cls}" data-fold="${key}" ${style ? `style="${style}"` : ''} ${open ? 'open' : ''}>
+      <summary><h2>${title}${extra}</h2></summary>
+      <div class="fold-body">${body}</div>
+    </details>`;
+}
+
 function daysSince(dateStr) {
   if (!dateStr) return null;
   const d = new Date(`${dateStr}T00:00:00`);
@@ -20,8 +39,10 @@ function statusCard(c) {
   const s = caseStatus(c);
   const found = s === '已尋獲';
   const day = daysSince(c.meta.reportDate);
-  return `
-    <section class="card ${found ? '' : 'accent'}">
+  return fold(
+    'status',
+    '案件狀態',
+    `
       <div class="big-status">
         <span class="state ${found ? 'found' : 'active'}">${esc(s)}</span>
         ${!found && day ? `<span class="chip">搜索第 ${day} 天</span>` : ''}
@@ -34,17 +55,19 @@ function statusCard(c) {
         ${row('每日會議', c.meta.dailyMeeting)}
         ${row('資料更新', c.meta.updated)}
       </dl>
-      ${has(c.meta.assembly) ? `<h3 style="margin-top:10px">集合與出發</h3><ul style="margin:4px 0 0;padding-left:18px">${c.meta.assembly.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
-    </section>`;
+      ${has(c.meta.assembly) ? `<h3 style="margin-top:10px">集合與出發</h3><ul style="margin:4px 0 0;padding-left:18px">${c.meta.assembly.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}`,
+    { cls: found ? '' : 'accent' }
+  );
 }
 
 function foundCard(c) {
   const f = c.found;
   if (!f) return '';
   const t = f.lat != null ? wgs84ToTwd97(f.lat, f.lng) : null;
-  return `
-    <section class="card" style="border-color:var(--ok)">
-      <h2>發現失聯者 <span class="chip ok">${esc(f.time || '')}</span></h2>
+  return fold(
+    'found',
+    '發現失聯者',
+    `
       <dl class="kv">
         ${f.lat != null ? `<dt>座標</dt><dd class="mono">${f.lat}, ${f.lng}<br>TWD97 ${Math.round(t.x)}, ${Math.round(t.y)}</dd>` : ''}
         ${row('距 IPP', f.distanceFromIpp)}
@@ -52,17 +75,19 @@ function foundCard(c) {
         ${row('經過', f.narrative)}
         ${row('紀錄', f.by)}
       </dl>
-      ${f.lat != null ? `<div class="btn-row" style="margin-top:10px"><a class="btn small" href="#/map?focus=發現點">在地圖上看</a></div>` : ''}
-    </section>`;
+      ${f.lat != null ? `<div class="btn-row" style="margin-top:10px"><a class="btn small" href="#/map?focus=發現點">在地圖上看</a></div>` : ''}`,
+    { style: 'border-color:var(--ok)', extra: f.time ? ` <span class="chip ok">${esc(f.time)}</span>` : '' }
+  );
 }
 
 function subjectCard(c) {
   const s = c.subject;
   const head = [s.name, s.nickname && `（${s.nickname}）`].filter(Boolean).join('');
   const basics = [s.gender, s.age && `${s.age} 歲`, s.height && `${s.height} cm`, s.weight && `${s.weight} kg`].filter(Boolean).join('・');
-  return `
-    <section class="card">
-      <h2>失聯者</h2>
+  return fold(
+    'subject',
+    '失聯者',
+    `
       <p style="font-size:1.25rem;font-weight:700">${esc(head || '（未填）')}</p>
       ${basics ? `<p class="muted">${esc(basics)}</p>` : ''}
       ${has(c.clothing) ? `<h3 style="margin-top:10px">當天穿著</h3><div class="looks" style="margin-top:6px">${c.clothing.map((x) => `<span><b>${esc(x.item)}</b>${esc(x.desc)}</span>`).join('')}</div>` : ''}
@@ -77,22 +102,23 @@ function subjectCard(c) {
         ${s.phone ? `<dt>手機</dt><dd class="mono">${esc(s.phone)}</dd>` : ''}
         ${(s.social || []).map((x) => `<dt>${esc(x.type)}</dt><dd>${/^https?:/.test(x.value) ? `<a href="${esc(x.value)}" target="_blank" rel="noopener">${esc(x.value.replace(/^https?:\/\/(www\.)?/, ''))}</a>` : esc(x.value)}</dd>`).join('')}
       </dl>
-      ${has(s.notes) ? `<h3 style="margin:12px 0 6px">質性分析</h3>${s.notes.map((n) => `<div class="quote">${esc(n.text)}<cite>— ${esc(n.source)}</cite></div>`).join('')}` : ''}
-    </section>`;
+      ${has(s.notes) ? `<h3 style="margin:12px 0 6px">質性分析</h3>${s.notes.map((n) => `<div class="quote">${esc(n.text)}<cite>— ${esc(n.source)}</cite></div>`).join('')}` : ''}`
+  );
 }
 
 function ippCard(c) {
   const i = c.ipp;
   if (!has(i.lastSeen) && !has(i.likelyArea)) return '';
-  return `
-    <section class="card">
-      <h2>最後已知點（IPP）</h2>
+  return fold(
+    'ipp',
+    '最後已知點（IPP）',
+    `
       <dl class="kv">
         ${row('最後目擊', i.lastSeen)}
         ${row('最可能地點', i.likelyArea)}
         ${row('最後交談', i.lastContact)}
-      </dl>
-    </section>`;
+      </dl>`
+  );
 }
 
 function contactsCard(c) {
@@ -102,11 +128,11 @@ function contactsCard(c) {
     ...(c.area.localContacts || []),
   ].filter((p) => p && p.phone);
   if (!people.length) return '';
-  return `
-    <section class="card">
-      <h2>聯絡窗口</h2>
-      ${people.map((p) => `<div class="tel"><div><b>${esc(p.name)}</b>${p.note ? `<br><span class="muted small">${esc(p.note)}</span>` : ''}<br><span class="mono">${esc(p.phone)}</span></div>${telLink(p.phone)}</div>`).join('')}
-    </section>`;
+  return fold(
+    'contacts',
+    '聯絡窗口',
+    people.map((p) => `<div class="tel"><div><b>${esc(p.name)}</b>${p.note ? `<br><span class="muted small">${esc(p.note)}</span>` : ''}<br><span class="mono">${esc(p.phone)}</span></div>${telLink(p.phone)}</div>`).join('')
+  );
 }
 
 function timelineCard(c) {
@@ -121,27 +147,65 @@ function timelineCard(c) {
   ];
   if (c.found?.time) items.push({ cls: 'found', when: c.found.time, tag: '尋獲', body: `<p>${esc(c.found.narrative || '')}</p>` });
   if (!items.length) return '';
-  return `
-    <section class="card">
-      <h2>時間軸</h2>
+  return fold(
+    'timeline',
+    '時間軸',
+    `
       <ul class="timeline">
         ${items.map((it) => `<li class="${it.cls}"><div class="when">${esc(it.when)} <span class="chip ${it.cls === 'plan' ? 'muted' : it.cls === 'found' ? 'ok' : ''}">${it.tag}</span></div>${it.body}</li>`).join('')}
       </ul>
-      ${c.retreatPlan ? `<details style="margin-top:10px"><summary>撤退計畫及隊伍其他資訊</summary><p>${nl2br(c.retreatPlan)}</p></details>` : ''}
-    </section>`;
+      ${c.retreatPlan ? `<details style="margin-top:10px"><summary>撤退計畫及隊伍其他資訊</summary><p>${nl2br(c.retreatPlan)}</p></details>` : ''}`
+  );
+}
+
+// 失蹤者原定行程（單獨一區）
+function itineraryCard(c) {
+  if (!has(c.itinerary) && !c.retreatPlan) return '';
+  return fold(
+    'itinerary',
+    '失蹤者行程',
+    `
+      <ol class="day-list">
+        ${c.itinerary.map((d) => `<li><div class="when">${esc(d.day)} <span class="muted">${esc(d.date)}</span></div><p>${nl2br(d.plan)}</p></li>`).join('')}
+      </ol>
+      ${c.retreatPlan ? `<h3 style="margin-top:10px">撤退計畫及隊伍其他資訊</h3><p>${nl2br(c.retreatPlan)}</p>` : ''}`,
+    { extra: has(c.itinerary) ? ` <span class="chip muted">${c.itinerary.length} 天</span>` : '' }
+  );
+}
+
+// 每日搜救紀錄（單獨一區）
+function searchLogCard(c) {
+  if (!has(c.log)) return '';
+  return fold(
+    'searchlog',
+    '搜救紀錄',
+    `
+      <ol class="day-list">
+        ${c.log
+          .map(
+            (l) => `<li><div class="when">${esc(l.date)}</div>
+              ${l.personnel ? `<p class="muted small">出勤：${esc(l.personnel)}</p>` : ''}
+              ${has(l.entries) ? `<ul>${l.entries.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+              ${l.meeting ? `<p class="small" style="margin-top:4px"><b>晚會：</b>${nl2br(l.meeting)}</p>` : ''}</li>`
+          )
+          .join('')}
+      </ol>`,
+    { extra: ` <span class="chip">${c.log.length} 天</span>` }
+  );
 }
 
 function areaCard(c) {
   const a = c.area;
   if (!has(a.signal) && !has(a.weather)) return '';
-  return `
-    <section class="card">
-      <h2>案件所在地</h2>
+  return fold(
+    'area',
+    '案件所在地',
+    `
       <dl class="kv">
         ${row('通訊', a.signal)}
         ${row('天氣', a.weather)}
-      </dl>
-    </section>`;
+      </dl>`
+  );
 }
 
 export function render(el, app) {
@@ -152,13 +216,45 @@ export function render(el, app) {
       ${c.meta.notice ? `<div class="banner" role="note">${icon('alert')}<span>${esc(c.meta.notice)}</span></div>` : ''}
       ${statusCard(c)}
       ${foundCard(c)}
-      ${c.report ? `<section class="card"><h2>通報事由</h2><p>${nl2br(c.report)}</p></section>` : ''}
+      ${c.report ? fold('report', '通報事由', `<p>${nl2br(c.report)}</p>`) : ''}
       ${subjectCard(c)}
       ${ippCard(c)}
       ${contactsCard(c)}
+      ${itineraryCard(c)}
+      ${searchLogCard(c)}
       ${timelineCard(c)}
       ${areaCard(c)}
       <div class="btn-row"><a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a></div>
       <p class="muted small" style="text-align:center">資料來源：${esc(c.meta.source || '')}　更新：${esc(c.meta.updated || '')}</p>
     </div>`;
+
+  const wrap = el.firstElementChild;
+  // 全部展開／收合
+  wrap.insertAdjacentHTML(
+    'afterbegin',
+    `<div class="fold-tools"><button type="button" class="btn small" data-fold-all="open">全部展開</button><button type="button" class="btn small" data-fold-all="close">全部收合</button></div>`
+  );
+  const save = () => {
+    try {
+      localStorage.setItem(FOLD_KEY, JSON.stringify(folds));
+    } catch {
+      /* 私密瀏覽時不記 */
+    }
+  };
+  wrap.addEventListener(
+    'toggle',
+    (e) => {
+      const key = e.target.dataset?.fold;
+      if (!key) return;
+      folds[key] = e.target.open;
+      save();
+    },
+    true
+  );
+  wrap.querySelectorAll('[data-fold-all]').forEach((b) => {
+    b.onclick = () => {
+      const open = b.dataset.foldAll === 'open';
+      wrap.querySelectorAll('details.fold').forEach((d) => (d.open = open));
+    };
+  });
 }
