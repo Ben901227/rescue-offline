@@ -78,7 +78,12 @@ export async function render(el, app) {
   verUpdate.onclick = async () => {
     verUpdate.disabled = true;
     verUpdate.textContent = '更新中…';
-    await applyUpdate();
+    if (!(await applyUpdate())) {
+      verUpdate.disabled = false;
+      verUpdate.textContent = '再試一次';
+      verStatus.textContent = '更新失敗，請稍後再試（需要穩定的網路）';
+      verStatus.style.color = 'var(--danger)';
+    }
   };
   runCheck();
 

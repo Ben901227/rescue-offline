@@ -100,7 +100,11 @@ async function showUpdateBar() {
 document.getElementById('updateBtn').addEventListener('click', async (e) => {
   e.target.disabled = true;
   e.target.textContent = '更新中…';
-  await applyUpdate();
+  if (!(await applyUpdate())) {
+    e.target.disabled = false;
+    e.target.textContent = '再試一次';
+    document.getElementById('updateText').textContent = '更新失敗，請稍後再試（需要穩定的網路）';
+  }
 });
 document.getElementById('updateLater').addEventListener('click', () => {
   updateDismissed = true;

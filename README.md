@@ -66,7 +66,7 @@ npm test
 
 把專案（不含 `private/`）推到 GitHub repo，在 Settings → Pages 選分支即可。任何 HTTPS 靜態主機都可以。
 
-**每次修改 App 檔案後，把 `sw.js` 的 `VERSION` 和 `js/version.js` 的 `APP_VERSION` 一起加 1**（`npm test` 會檢查兩者一致）；新增檔案時也要加進 `sw.js` 的 `SHELL` 清單，否則離線時會缺檔。隊員打開 App 時，若有新版會在頂部提示「有新版本」，設定頁也能看目前版本並立即更新。
+**每次修改 App 檔案後，把 `sw.js` 的 `VERSION` 和 `js/version.js` 的 `APP_VERSION` 一起加 1**（`npm test` 會檢查兩者一致）。推上 GitHub 後 Pages 的 CDN 需要幾分鐘才完全更新，這段時間手機更新可能失敗，App 會提示「更新失敗，請稍後再試」並記入使用記錄；新增檔案時也要加進 `sw.js` 的 `SHELL` 清單，否則離線時會缺檔。隊員打開 App 時，若有新版會在頂部提示「有新版本」，設定頁也能看目前版本並立即更新。
 
 ## 隊員使用流程
 
