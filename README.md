@@ -80,6 +80,8 @@ npm run test:rules
 
 ## 部署（例：GitHub Pages）
 
+**改版檢查清單**：只要畫面或操作有變，**同一次改版就要一併更新使用教學 [guide.html](guide.html)**（步驟說明、手機示意圖、按鈕對照表、常見問題），教學是給不熟手機的隊員看的，不能跟 App 對不上。
+
 把專案（不含 `private/`）推到 GitHub repo，在 Settings → Pages 選分支即可。任何 HTTPS 靜態主機都可以。
 
 **每次修改 App 檔案後，把 `sw.js` 的 `VERSION` 和 `js/version.js` 的 `APP_VERSION` 一起加 1（格式 `v0.0.xx`；`APP_CHANNEL` 標示「測試版」，正式上線時清空）**（`npm test` 會檢查兩者一致）。推上 GitHub 後 Pages 的 CDN 需要幾分鐘才完全更新，這段時間手機更新可能失敗，App 會提示「更新失敗，請稍後再試」並記入使用記錄；新增檔案時也要加進 `sw.js` 的 `SHELL` 清單，否則離線時會缺檔。隊員打開 App 時，若有新版會在頂部提示「有新版本」，設定頁也能看目前版本並立即更新。
