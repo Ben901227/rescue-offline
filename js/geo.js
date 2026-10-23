@@ -1,4 +1,7 @@
 // 單一 GPS 監聽，地圖與定位頁共用；沒有訂閱者時自動停止以省電。
+import * as log from './log.js';
+
+const loggedErrors = new Set();
 
 const subs = new Set();
 let watchId = null;
@@ -37,6 +40,10 @@ function start() {
     },
     (err) => {
       lastError = err.code === 1 ? '未允許定位權限，請到瀏覽器／系統設定開啟' : err.code === 3 ? '定位逾時，請移到開闊處' : '無法取得定位';
+      if (!loggedErrors.has(err.code)) {
+        loggedErrors.add(err.code); // 同一種定位問題只記一次
+        log.warn('定位', lastError, err.message);
+      }
       emit();
     },
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 }

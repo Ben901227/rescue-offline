@@ -310,3 +310,14 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .route-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line); }
 /* 有新版提示時把內容往下推，避免蓋住 */
 body.has-update main:not(.full) { padding-top: calc(var(--topbar-h) + var(--safe-t) + 76px); }
+.seg { display: flex; gap: 6px; }
+.seg .btn { flex: 1; }
+.seg .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.log-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.log-list li { padding: 8px 0 8px 10px; border-top: 1px solid var(--line); border-left: 3px solid transparent; overflow-wrap: anywhere; }
+.log-list li:first-child { border-top: 0; }
+.log-list li.log-error { border-left-color: var(--danger); }
+.log-list li.log-warn { border-left-color: var(--warn); }
+.log-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.log-head time { margin-left: auto; }
+.chip.err { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }

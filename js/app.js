@@ -1,4 +1,6 @@
+import * as log from './log.js'; // 最先載入，才能接到之後的程式錯誤
 import { db, kv } from './db.js';
+import { APP_VERSION } from './version.js';
 import { normalizeCase, caseStatus } from './lib/caseSchema.js';
 import * as summary from './views/summary.js';
 import * as map from './views/map.js';
@@ -71,12 +73,18 @@ function updateNet() {
 document.getElementById('caseSwitch').addEventListener('click', () => app.go('cases'));
 document.getElementById('settingsBtn').addEventListener('click', () => app.go('settings'));
 window.addEventListener('hashchange', route);
-window.addEventListener('online', updateNet);
-window.addEventListener('offline', updateNet);
+window.addEventListener('online', () => {
+  updateNet();
+  log.info('網路', '已連線');
+});
+window.addEventListener('offline', () => {
+  updateNet();
+  log.info('網路', '已離線');
+});
 updateNet();
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW 註冊失敗', e));
+  navigator.serviceWorker.register('sw.js').catch((e) => log.error('離線功能', '背景程式註冊失敗，離線可能無法使用', e.message));
 }
 
 // 有網路時檢查是否有新版，有的話在頂部提示
@@ -102,6 +110,13 @@ document.getElementById('updateLater').addEventListener('click', () => {
 window.addEventListener('online', showUpdateBar);
 document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && showUpdateBar());
 showUpdateBar();
+
+// 版本有變（更新完成或第一次開啟）時記一筆
+const lastVersion = await kv.get('lastVersion').catch(() => null);
+if (lastVersion !== APP_VERSION) {
+  log.info('更新', lastVersion ? `已更新到 ${APP_VERSION}` : `開始記錄（${APP_VERSION}）`, lastVersion ? `原本 ${lastVersion}` : '');
+  kv.set('lastVersion', APP_VERSION).catch(() => {});
+}
 
 await app.reload();
 if (!app.current && !location.hash.startsWith('#/cases')) app.go('cases');

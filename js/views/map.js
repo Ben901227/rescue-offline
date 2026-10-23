@@ -6,6 +6,7 @@ import { parseTrackFile, toGpx } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { prepare, beginAuth, saveAndUpload } from '../drive.js';
+import * as log from '../log.js';
 import { subscribe } from '../geo.js';
 import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL, fmtDist } from '../markers.js';
 import { BASEMAPS, tileUrls, downloadTiles, cachedTileCount, clearTiles } from '../tiles.js';
@@ -399,6 +400,7 @@ export async function render(el, app) {
         if (trackLayer.getLayers().length) map.fitBounds(trackLayer.getBounds(), { padding: [30, 30] });
         toast(`已匯入 ${file.name}`);
       } catch (e) {
+        log.warn('航跡匯入', `${file.name} 匯入失敗`, e.message);
         toast(`匯入失敗：${e.message}`, 4000);
       }
     };
@@ -466,6 +468,7 @@ export async function render(el, app) {
           },
         });
         const stopped = abort.signal.aborted;
+        (r.failed ? log.warn : log.info)('離線地圖', `${current.name}：${stopped ? '已停止' : '下載完成'} ${r.done - r.failed}/${r.total} 張`, r.failed ? `${r.failed} 張失敗` : '');
         abort = null;
         s.querySelector('#dlText').textContent = stopped ? `已停止（${r.done} / ${r.total}）` : `完成：${r.total - r.failed} 張可離線使用${r.failed ? `，${r.failed} 張失敗，可再按一次補下載` : ''}`;
         s.querySelector('#dlStop').classList.add('hidden');

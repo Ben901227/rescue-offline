@@ -2,6 +2,9 @@ import { esc, toast } from '../ui.js';
 import { icon } from '../icons.js';
 import { APP_VERSION, APP_DATE } from '../version.js';
 import { checkUpdate, applyUpdate } from '../update.js';
+import { readLogs, clearLogs, reportText } from '../log.js';
+import { fmtStamp, LEVEL_LABEL } from '../lib/logFormat.js';
+import { copyText } from '../ui.js';
 import { db } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { driveSettingsHtml, bindDriveSettings, prepare, beginAuth, saveAndUpload } from '../drive.js';
@@ -28,6 +31,20 @@ export async function render(el, app) {
       <h1 style="font-size:1.3rem">設定</h1>
       <section class="card" id="clCard"></section>
       <section class="card" id="driveCard">${driveSettingsHtml()}</section>
+      <section class="card" id="logCard">
+        <h2>使用記錄</h2>
+        <p class="muted small">記下錯誤、同步與上傳結果、更新等，只存在這支手機。遇到問題時按「複製記錄」，貼到 LINE 傳給資料組。</p>
+        <div class="seg" role="group" aria-label="顯示哪些記錄" style="margin-top:10px">
+          <button type="button" class="btn small" data-logf="all" aria-pressed="true">全部</button>
+          <button type="button" class="btn small" data-logf="problem" aria-pressed="false">只看問題</button>
+        </div>
+        <ul class="log-list" id="logList" aria-live="polite"></ul>
+        <button type="button" class="btn small hidden" id="logMore" style="width:100%;margin-top:8px">顯示更多</button>
+        <div class="btn-row" style="margin-top:10px">
+          <button type="button" class="btn primary" id="logCopy">複製記錄</button>
+          <button type="button" class="btn danger" id="logClear">清除記錄</button>
+        </div>
+      </section>
       <section class="card" id="verCard">
         <h2>App 版本</h2>
         <p>目前版本：<b class="mono">${APP_VERSION}</b> <span class="muted small">（${APP_DATE}）</span></p>
@@ -55,6 +72,48 @@ export async function render(el, app) {
     await applyUpdate();
   };
   runCheck();
+
+  // 使用記錄
+  let logFilter = 'all';
+  let logLimit = 30;
+  const logList = el.querySelector('#logList');
+  let report = ''; // 先準備好，按「複製」時才能在同一個點擊內寫入剪貼簿（iOS 要求）
+  const drawLogs = async () => {
+    const all = await readLogs();
+    report = await reportText();
+    const rows = logFilter === 'problem' ? all.filter((e) => e.level !== 'info') : all;
+    logList.innerHTML = rows.length
+      ? rows
+          .slice(0, logLimit)
+          .map(
+            (e) => `<li class="log-${e.level}">
+              <div class="log-head"><span class="chip ${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : 'muted'}">${LEVEL_LABEL[e.level]}</span><b>${esc(e.cat)}</b><time class="muted small">${fmtStamp(e.t)}</time></div>
+              <div>${esc(e.msg)}</div>${e.detail ? `<div class="muted small">${esc(e.detail)}</div>` : ''}
+            </li>`
+          )
+          .join('')
+      : `<li class="muted">${logFilter === 'problem' ? '沒有錯誤或需要注意的記錄' : '還沒有記錄'}</li>`;
+    el.querySelector('#logMore').classList.toggle('hidden', rows.length <= logLimit);
+  };
+  el.querySelectorAll('[data-logf]').forEach((b) => {
+    b.onclick = () => {
+      logFilter = b.dataset.logf;
+      logLimit = 30;
+      el.querySelectorAll('[data-logf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      drawLogs();
+    };
+  });
+  el.querySelector('#logMore').onclick = () => {
+    logLimit += 50;
+    drawLogs();
+  };
+  el.querySelector('#logCopy').onclick = () => copyText(report);
+  el.querySelector('#logClear').onclick = async () => {
+    if (!confirm('清除這支手機上的所有使用記錄？')) return;
+    await clearLogs();
+    drawLogs();
+  };
+  drawLogs();
   prepare().catch(() => {});
 
   const card = el.querySelector('#clCard');

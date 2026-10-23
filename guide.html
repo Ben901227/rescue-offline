@@ -145,6 +145,8 @@ details.faq > div { padding: 0 16px 14px; }
 .qr { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin: 12px 0; }
 .qr svg { width: 150px; height: 150px; background: #fff; border-radius: 10px; flex: none; }
 .url { font-family: ui-monospace, Menlo, monospace; font-size: .95rem; word-break: break-all; background: var(--bg); padding: 6px 10px; border-radius: 8px; display: inline-block; }
+.copy.open { display: inline-flex; align-items: center; text-decoration: none; }
+a.url { color: var(--blue); text-decoration: underline; }
 .copy { min-height: 48px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 800; cursor: pointer; margin-top: 8px; }
 
 .back { display: inline-flex; align-items: center; min-height: 48px; font-weight: 700; }
@@ -231,9 +233,12 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
       <div class="qr">
         <svg role="img" aria-label="App 網址的 QR Code" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" class="segno"><path class="qrline" stroke="#1c1917" d="M2 2.5h7m3 0h2m1 0h1m3 0h8m1 0h7m-33 1h1m5 0h1m1 0h2m2 0h2m2 0h1m1 0h1m1 0h4m2 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h3m1 0h3m1 0h2m1 0h2m1 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m3 0h4m5 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m1 0h1m3 0h1m3 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m2 0h2m2 0h4m2 0h1m2 0h1m1 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-23 1h3m1 0h2m1 0h1m2 0h1m1 0h1m1 0h1m-24 1h3m1 0h2m3 0h2m2 0h1m1 0h9m5 0h2m-32 1h4m6 0h1m1 0h2m1 0h1m3 0h6m1 0h2m1 0h2m1 0h1m-32 1h2m1 0h3m4 0h2m1 0h4m3 0h4m1 0h4m1 0h2m-33 1h3m8 0h1m1 0h4m1 0h2m2 0h1m3 0h2m1 0h1m1 0h2m-33 1h1m1 0h1m1 0h4m1 0h1m3 0h1m1 0h1m2 0h2m2 0h4m2 0h2m1 0h2m-29 1h2m3 0h2m3 0h1m1 0h3m1 0h1m3 0h1m2 0h1m1 0h3m-32 1h3m2 0h3m1 0h1m3 0h1m1 0h2m1 0h5m1 0h1m1 0h4m-28 1h1m2 0h1m3 0h1m1 0h4m3 0h4m3 0h2m2 0h2m-31 1h1m1 0h2m2 0h1m1 0h2m2 0h1m4 0h1m1 0h3m2 0h3m1 0h3m-31 1h5m2 0h1m1 0h1m1 0h1m2 0h2m2 0h1m1 0h2m1 0h1m1 0h2m1 0h2m1 0h2m-32 1h1m1 0h1m1 0h3m4 0h1m1 0h1m1 0h2m2 0h3m1 0h1m2 0h2m1 0h1m-31 1h3m1 0h2m1 0h1m4 0h2m5 0h1m4 0h2m2 0h1m-29 1h1m1 0h2m1 0h3m2 0h1m3 0h2m3 0h1m1 0h1m1 0h1m5 0h3m-32 1h3m2 0h1m1 0h2m1 0h1m1 0h4m1 0h1m1 0h1m1 0h1m1 0h4m2 0h1m2 0h1m-31 1h2m2 0h1m1 0h1m1 0h1m2 0h2m1 0h1m4 0h1m1 0h2m1 0h1m1 0h1m1 0h3m-32 1h1m2 0h2m1 0h5m1 0h1m1 0h1m3 0h2m1 0h1m1 0h3m1 0h1m3 0h1m-33 1h1m2 0h1m1 0h2m1 0h2m1 0h3m1 0h1m2 0h1m5 0h5m3 0h1m-25 1h2m3 0h2m2 0h1m1 0h1m1 0h4m3 0h2m-30 1h7m3 0h3m6 0h1m2 0h3m1 0h1m1 0h1m-29 1h1m5 0h1m1 0h5m3 0h2m1 0h6m3 0h4m-32 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h3m1 0h10m1 0h3m-33 1h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m3 0h1m1 0h4m-33 1h1m1 0h3m1 0h1m1 0h1m2 0h5m2 0h1m3 0h3m1 0h2m1 0h1m-30 1h1m5 0h1m1 0h2m1 0h1m2 0h1m4 0h1m2 0h7m3 0h1m-33 1h7m2 0h1m2 0h1m2 0h1m1 0h2m2 0h3m4 0h3"/></svg>
         <div>
-          <p>或是在瀏覽器輸入這個網址：</p>
-          <span class="url" id="appUrl">https://ben901227.github.io/rescue-offline/</span><br>
-          <button class="copy" type="button" id="copyUrl">複製網址</button>
+          <p>或是直接點下面的網址：</p>
+          <a class="url" id="appUrl" href="./">https://ben901227.github.io/rescue-offline/</a><br>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <a class="copy open" href="./">打開 App</a>
+            <button class="copy" type="button" id="copyUrl" style="background:var(--card);color:var(--text);border:2px solid var(--line)">複製網址</button>
+          </div>
           <p class="muted" style="margin-top:8px">iPhone 請用 <b>Safari</b> 打開；Android 請用 <b>Chrome</b> 打開。</p>
         </div>
       </div>
@@ -532,6 +537,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
     <details class="faq"><summary>看不到最新的案件內容？</summary><div><p>到「案件」頁按 <b>同步最新資料</b>（需要網路）。</p></div></details>
     <details class="faq"><summary>按「儲存並上傳」後說「已存在本機」？</summary><div><p>代表現在沒網路或上傳失敗，資料已經先存在你的手機，不會不見。回到有網路的地方按 <b>同步最新資料</b> 就會補上傳。</p></div></details>
     <details class="faq"><summary>怎麼知道 App 是不是最新版？怎麼更新？</summary><div><p>有網路時打開 App，如果有新版，<b>畫面上方會出現橘色的「有新版本」</b>，按 <b>更新</b> 就好。</p><p>也可以按右上角 <b>齒輪</b>，看「App 版本」：顯示「已是最新版」就不用做任何事；有新版時按 <b>立即更新</b>。</p><p class="muted">上山前，建議在有網路的地方先確認是最新版。</p></div></details>
+    <details class="faq"><summary>App 出問題，要怎麼回報給資料組？</summary><div><ol class="do"><li>按右上角 <b>齒輪</b>。</li><li>找到「使用記錄」，按 <span class="btnlike">複製記錄</span>。</li><li>打開 LINE，在和資料組的對話裡<b>長按 → 貼上</b>，再簡單說明發生什麼事。</li></ol><p class="muted">使用記錄只存在你的手機，裡面是錯誤訊息、同步和更新的結果，不含案件內容。</p></div></details>
     <details class="faq"><summary>不小心把桌面圖示刪掉了？</summary><div><p>照第 1、2 步重新加回桌面，再按一次同步就好。已下載的地圖可能要重新下載。</p></div></details>
   </section>
 
@@ -563,7 +569,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
 
   // 複製網址
   document.getElementById('copyUrl').addEventListener('click', async (e) => {
-    const text = document.getElementById('appUrl').textContent;
+    const text = document.getElementById('appUrl').href;
     try { await navigator.clipboard.writeText(text); e.target.textContent = '已複製！'; }
     catch (err) { e.target.textContent = '請長按網址複製'; }
     setTimeout(() => (e.target.textContent = '複製網址'), 2500);

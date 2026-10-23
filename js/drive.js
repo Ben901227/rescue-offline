@@ -14,6 +14,7 @@ import { db, kv } from './db.js';
 import { esc, toast } from './ui.js';
 import { validateCase } from './lib/caseSchema.js';
 import { parseTrackFile } from './lib/gpx.js';
+import * as log from './log.js';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPES = 'https://www.googleapis.com/auth/drive openid email';
@@ -168,7 +169,12 @@ export async function uploadCase(c, { force = false } = {}) {
 export async function saveAndUpload(c, auth) {
   const local = { ...c, _pendingUpload: true };
   await db.put('cases', local);
-  if (!auth) return { uploaded: false, reason: isConfigured() ? '目前離線，已存在本機，下次同步時會自動上傳' : '尚未設定 Google Drive，只存在本機' };
+  const name = c.meta?.name || c.id;
+  if (!auth) {
+    const reason = isConfigured() ? '目前離線，已存在本機，下次同步時會自動上傳' : '尚未設定 Google Drive，只存在本機';
+    log.info('上傳', `「${name}」先存在本機，待上傳`, reason);
+    return { uploaded: false, reason };
+  }
   try {
     await auth;
     let sync;
@@ -180,8 +186,10 @@ export async function saveAndUpload(c, auth) {
     }
     const { _pendingUpload, _localEdit, ...rest } = local;
     await db.put('cases', { ...rest, _sync: sync });
+    log.info('上傳', `「${name}」已上傳到 Drive`);
     return { uploaded: true };
   } catch (e) {
+    log.warn('上傳', `「${name}」上傳失敗，已存在本機`, e.conflict ? 'Drive 上有其他人更新的版本' : e.message);
     return {
       uploaded: false,
       reason: e.conflict ? '已存在本機，未上傳：Drive 上有其他人更新的版本。請先同步取得最新版，再重新編輯儲存' : `已存在本機，但上傳失敗：${e.message}。下次同步時會再試`,
@@ -340,12 +348,15 @@ export function bindSyncCard(card, app, onDone) {
     msg.textContent = '同步中…';
     try {
       const r = await sync();
+      log.info('同步', summarize(r));
+      for (const err of r.errors) log.warn('同步', '檔案有問題', err);
       msg.innerHTML = esc(summarize(r)) + (r.errors.length ? `<br>${r.errors.map(esc).join('<br>')}` : '');
       await app.reload();
       onDone?.();
       toast(summarize(r));
     } catch (e) {
       msg.textContent = e.message;
+      (e.denied ? log.warn : log.error)('同步', e.denied ? '沒有資料夾權限' : '同步失敗', e.message);
       if (e.denied) {
         await app.reload();
         onDone?.();

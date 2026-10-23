@@ -1,5 +1,5 @@
 // 改了任何 App 檔案就把版本號 +1，手機下次連線時會更新快取。
-const VERSION = 'v11';
+const VERSION = 'v12';
 const SHELL_CACHE = `shell-${VERSION}`;
 const TILE_CACHE = 'tiles-v1';
 const TILE_HOSTS = ['tile.happyman.idv.tw', 'wmts.nlsc.gov.tw'];
@@ -18,6 +18,8 @@ const SHELL = [
   'js/tiles.js',
   'js/version.js',
   'js/update.js',
+  'js/log.js',
+  'js/lib/logFormat.js',
   'js/icons.js',
   'js/mapPicker.js',
   'js/lib/path.js',
