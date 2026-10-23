@@ -25,3 +25,11 @@ test('normalizeCase 把字串清單項目轉成物件', () => {
   assert.deepEqual(c.checklist[0].items[0], { id: '0-0', text: '頭燈' });
   assert.equal(caseStatus(c), '搜索中');
 });
+
+test('routes 驗證', () => {
+  const base = { id: 'a', meta: { name: 'a' } };
+  assert.deepEqual(validateCase({ ...base, routes: [{ id: 'r1', name: 'A', points: [[23.9, 121.3], [23.91, 121.31]] }] }), []);
+  assert.equal(validateCase({ ...base, routes: [{ id: 'r1', points: [[23.9, 121.3]] }] }).length, 1);
+  assert.equal(validateCase({ ...base, routes: {} }).length, 1);
+  assert.deepEqual(normalizeCase(base).routes, []);
+});

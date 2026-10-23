@@ -1,5 +1,8 @@
 import { esc, has } from '../ui.js';
 import { kv } from '../db.js';
+import { icon } from '../icons.js';
+import { routeLength } from '../lib/route.js';
+import { fmtDist } from '../markers.js';
 
 const key = (c) => `checklist:${c.id}`;
 
@@ -43,6 +46,22 @@ export async function render(el, app) {
                 )
                 .join('')
             : '<p class="muted">尚無分組資料</p>'
+        }
+      </section>
+      <section class="card">
+        <h2>搜救路線</h2>
+        ${
+          c.routes.length
+            ? c.routes
+                .map(
+                  (r) => `<a class="team route-link" href="#/map?route=${encodeURIComponent(r.id)}">
+                    <span class="route-dot" style="background:${esc(r.color || '#e11d48')}"></span>
+                    <span style="flex:1"><b>${esc(r.name)}</b>${r.team ? `<span class="who">　${esc(r.team)}</span>` : ''}
+                    <br><span class="muted small">${fmtDist(routeLength(r.points))}・${r.points.length} 點${r.note ? `・${esc(r.note)}` : ''}</span></span>
+                    ${icon('map')}</a>`
+                )
+                .join('')
+            : '<p class="muted">尚未規劃路線。到「地圖」按路線按鈕，點地圖即可畫出搜救路線（離線也可以）。</p>'
         }
       </section>
       <div id="checklists" class="stack"></div>

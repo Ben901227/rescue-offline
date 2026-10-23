@@ -24,6 +24,7 @@
 | `area.bbox` | 搜索範圍 `[[南緯度, 西經度], [北緯度, 東經度]]`，用於地圖初始畫面與離線下載 |
 | `area.markers` | 地圖標記 `[{name, type, lat, lng, note}]`；`type` 可為 `ipp` `camp` `cp`(指揮所) `poi`；座標未知填 `null`，隊員可在地圖長按補上（只存本機） |
 | `teams` | 任務分組 `[{date, name, members, area, channel, note}]` |
+| `routes` | 搜救路線 `[{id, name, team, color, note, points: [[緯度, 經度], ...], updated}]`；在 App 地圖上規劃，離線也可畫，儲存時上傳 |
 | `radio` | 無線電 `{public, team}` |
 | `checklist` | 檢查清單 `[{group, items: ["項目", ...]}]` |
 | `log` | 每日搜救紀錄 `[{date, personnel, entries: [...], meeting}]` |

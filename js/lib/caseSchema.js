@@ -20,6 +20,11 @@ export function validateCase(data) {
     if (!isCoord(m)) errors.push(`area.markers[${i}]（${m.name || '未命名'}）座標格式錯誤`);
   });
   if (data.found?.lat != null && !isCoord(data.found)) errors.push('found 座標格式錯誤');
+  if (data.routes != null && !Array.isArray(data.routes)) errors.push('routes 必須是陣列');
+  (Array.isArray(data.routes) ? data.routes : []).forEach((r, i) => {
+    const ok = Array.isArray(r?.points) && r.points.length >= 2 && r.points.every((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (!r?.id || !ok) errors.push(`routes[${i}]（${r?.name || '未命名'}）需要 id 與至少兩個 [緯度, 經度] 點`);
+  });
   (data.checklist || []).forEach((g, i) => {
     if (!Array.isArray(g.items)) errors.push(`checklist[${i}].items 必須是陣列`);
   });
@@ -40,6 +45,7 @@ export function normalizeCase(data) {
     itinerary: data.itinerary || [],
     area: { markers: [], localContacts: [], ...data.area },
     teams: data.teams || [],
+    routes: data.routes || [],
     radio: { ...data.radio },
     checklist: (data.checklist || []).map((g, gi) => ({
       ...g,

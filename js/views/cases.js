@@ -1,26 +1,9 @@
-import { esc, toast, pickFile, downloadFile, sheet, closeSheet } from '../ui.js';
+import { esc, downloadFile, sheet, closeSheet } from '../ui.js';
 import { icon } from '../icons.js';
 import { db, kv } from '../db.js';
-import { validateCase, caseStatus } from '../lib/caseSchema.js';
+import { caseStatus } from '../lib/caseSchema.js';
 import { cachedTileCount } from '../tiles.js';
 import { syncCardHtml, bindSyncCard } from '../drive.js';
-
-async function importCase(text, app) {
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error('不是有效的 JSON');
-  }
-  const errors = validateCase(data);
-  if (errors.length) throw new Error(errors.join('；'));
-  const exists = await db.get('cases', data.id);
-  if (exists && !confirm(`已有「${data.meta.name}」，要用新檔案覆蓋嗎？（本機打點、航跡、勾選會保留）`)) return;
-  await db.put('cases', data);
-  navigator.storage?.persist?.();
-  await app.select(data.id);
-  toast(`已匯入「${data.meta.name}」`);
-}
 
 // 離線準備清單的一項：完成打勾，未完成空圈；文字說明狀態，不只靠顏色
 const step = (done, text) =>
@@ -35,7 +18,7 @@ export async function render(el, app) {
 
   el.innerHTML = `
     <div class="stack">
-      ${app.cases.length ? '' : `<div class="card empty"><p style="font-size:1.1rem;color:var(--text);font-weight:700">還沒有案件資料</p><p style="margin-top:6px">向指揮或資料組索取案件 JSON 檔後匯入。<br>資料只會存在這支手機。</p></div>`}
+      ${app.cases.length ? '' : `<div class="card empty"><p style="font-size:1.1rem;color:var(--text);font-weight:700">還沒有案件資料</p><p style="margin-top:6px">用 Google 帳號同步取得有權限的案件，或按「新增案件」建立。</p></div>`}
       ${app.cases
         .map((c) => {
           const s = caseStatus(c);
@@ -49,53 +32,21 @@ export async function render(el, app) {
         })
         .join('')}
       <section class="card" id="syncCard">${await syncCardHtml()}</section>
-      <div class="btn-row">
-        <a class="btn primary" href="#/edit">${icon('plus', { size: 18 })}新增案件</a>
-        <button class="btn" id="importFile">匯入案件檔</button>
-        <button class="btn" id="importPaste">貼上 JSON</button>
-      </div>
+      <a class="btn" style="width:100%" href="#/edit">${icon('plus', { size: 18 })}新增案件</a>
       <section class="card">
         <h2>離線準備</h2>
         <ul class="todo">
           ${step(standalone, standalone ? '已從主畫面開啟' : isIOS ? '在 Safari 按「分享」→「加入主畫面」，之後從主畫面圖示開啟' : '在瀏覽器選單選「安裝應用程式」或「加到主畫面」')}
-          ${step(app.cases.length, '已匯入案件資料')}
+          ${step(app.cases.length, app.cases.length ? '已有案件資料' : '同步或新增案件資料')}
           ${step(tiles, tiles ? `已存 ${tiles} 張離線圖磚` : '到「地圖」按下載鈕，存好離線底圖')}
           ${step(persisted, persisted ? '已啟用持久儲存' : '持久儲存未啟用（系統空間不足時可能被清除；加到主畫面通常可避免）')}
         </ul>
         ${est ? `<p class="muted small" style="margin-top:8px">本機已使用約 ${(est.usage / 1048576).toFixed(1)} MB</p>` : ''}
       </section>
       <div class="banner">案件資料含個人資料，只限搜救人員使用，請勿轉傳給非搜救人員。</div>
-      <p class="muted small" style="text-align:center"><a href="cases/template.json" download>下載空白案件範本</a>・<a href="cases/schema.md" target="_blank">欄位說明</a></p>
     </div>`;
 
   bindSyncCard(el.querySelector('#syncCard'), app, () => render(el, app));
-
-  el.querySelector('#importFile').onclick = async () => {
-    const file = await pickFile('.json,application/json');
-    if (!file) return;
-    try {
-      await importCase(await file.text(), app);
-      app.go('summary');
-    } catch (e) {
-      toast(`匯入失敗：${e.message}`, 5000);
-    }
-  };
-
-  el.querySelector('#importPaste').onclick = () => {
-    const s = sheet(`
-      <h2>貼上案件 JSON</h2>
-      <textarea id="pasteBox" placeholder='{"id": "...", "meta": {...}}'></textarea>
-      <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="pasteOk">匯入</button></div>`);
-    s.querySelector('#pasteOk').onclick = async () => {
-      try {
-        await importCase(s.querySelector('#pasteBox').value, app);
-        closeSheet();
-        app.go('summary');
-      } catch (e) {
-        toast(`匯入失敗：${e.message}`, 5000);
-      }
-    };
-  };
 
   el.firstElementChild.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-open],[data-more]');

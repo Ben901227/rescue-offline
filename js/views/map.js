@@ -1,10 +1,13 @@
-import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime } from '../ui.js';
+import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile } from '../ui.js';
 import { icon } from '../icons.js';
 import { db } from '../db.js';
 import { wgs84ToTwd97 } from '../lib/twd97.js';
-import { parseTrackFile } from '../lib/gpx.js';
+import { parseTrackFile, toGpx } from '../lib/gpx.js';
+import { routeLength, ROUTE_COLORS } from '../lib/route.js';
+import { validateCase } from '../lib/caseSchema.js';
+import { prepare, beginAuth, saveAndUpload } from '../drive.js';
 import { subscribe } from '../geo.js';
-import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL } from '../markers.js';
+import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL, fmtDist } from '../markers.js';
 import { BASEMAPS, tileUrls, downloadTiles, cachedTileCount, clearTiles } from '../tiles.js';
 
 const TRACK_COLORS = ['#e11d48', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2'];
@@ -31,13 +34,21 @@ function hashParams() {
 }
 
 export async function render(el, app) {
-  const c = app.current;
+  let c = app.current;
+  prepare().catch(() => {});
   el.className = 'full';
   el.innerHTML = `
     <div class="map-wrap">
       <div id="map"></div>
       <div class="map-hint" id="hint">長按地圖可查座標、加標記</div>
+      <div class="route-bar hidden" id="routeBar" role="toolbar" aria-label="規劃路線">
+        <div class="route-info"><b id="routeDist">0 m</b><span class="muted small" id="routeCount">點地圖加入路線點</span></div>
+        <button class="btn small" id="routeUndo" aria-label="復原上一點">${icon('undo')}</button>
+        <button class="btn small" id="routeCancel">取消</button>
+        <button class="btn small primary" id="routeDone">完成</button>
+      </div>
       <div class="map-tools">
+        <button class="btn" id="routeBtn" title="規劃搜救路線" aria-label="規劃搜救路線">${icon('route', { size: 22 })}</button>
         <button class="btn" id="layersBtn" title="圖層與航跡" aria-label="航跡與標記">${icon('layers', { size: 22 })}</button>
         <button class="btn" id="dlBtn" title="離線地圖" aria-label="離線地圖">${icon('download', { size: 22 })}</button>
         <button class="btn" id="locBtn" title="我的位置" aria-label="跟隨我的位置" aria-pressed="false">${icon('locate', { size: 22 })}</button>
@@ -55,6 +66,7 @@ export async function render(el, app) {
   L.control.layers(Object.fromEntries(BASEMAPS.map((b) => [b.name, layers[b.id]])), null, { position: 'topright' }).addTo(map);
   map.on('baselayerchange', (e) => pref.set('basemap', BASEMAPS.find((b) => layers[b.id] === e.layer).id));
 
+  const routeLayer = L.featureGroup().addTo(map);
   const markerLayer = L.layerGroup().addTo(map);
   const trackLayer = L.featureGroup().addTo(map);
   let markers = [];
@@ -96,7 +108,32 @@ export async function render(el, app) {
     });
   }
 
+  // 搜救路線（存在案件 JSON 的 routes，儲存時上傳 Drive 與全隊共享）
+  const routeById = {};
+  let drawing = null; // 規劃中的路線 { id, points: [[lat, lng]], base }
+  function drawRoutes() {
+    routeLayer.clearLayers();
+    for (const r of c?.routes || []) {
+      if (drawing?.id === r.id) continue; // 編輯中的路線改用草稿顯示
+      const color = r.color || ROUTE_COLORS[0];
+      const line = L.polyline(r.points, { color, weight: 5, opacity: 0.9, dashArray: '10 8' }).addTo(routeLayer);
+      L.circleMarker(r.points[0], { radius: 6, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 }).addTo(routeLayer);
+      L.circleMarker(r.points[r.points.length - 1], { radius: 6, color, weight: 3, fillColor: '#fff', fillOpacity: 1 }).addTo(routeLayer);
+      line.bindPopup(
+        `<b>${esc(r.name)}</b>${r.team ? `<br>負責：${esc(r.team)}` : ''}<br>長度 ${fmtDist(routeLength(r.points))}・${r.points.length} 點
+         ${r.note ? `<br><span class="small">${esc(r.note)}</span>` : ''}
+         <div class="btn-row" style="margin-top:8px">
+           <button class="btn small" data-route-edit="${esc(r.id)}">編輯</button>
+           <button class="btn small" data-route-gpx="${esc(r.id)}">GPX</button>
+           <button class="btn small danger" data-route-del="${esc(r.id)}">刪除</button>
+         </div>`
+      );
+      routeById[r.id] = line;
+    }
+  }
+
   await Promise.all([drawMarkers(), drawTracks()]);
+  drawRoutes();
 
   // 初始視角：網址指定 > 案件範圍 > 標記與航跡 > 台灣
   const q = hashParams();
@@ -104,6 +141,9 @@ export async function render(el, app) {
   if (q.lat && q.lng) {
     map.setView([+q.lat, +q.lng], 16);
     L.marker([+q.lat, +q.lng], { icon: pinIcon('poi') }).addTo(markerLayer).bindPopup(`<span class="mono">${coordText(+q.lat, +q.lng)}</span>`).openPopup();
+  } else if (q.route && routeById[q.route]) {
+    map.fitBounds(routeById[q.route].getBounds(), { padding: [40, 40] });
+    routeById[q.route].openPopup();
   } else if (focus) {
     map.setView([focus.lat, focus.lng], 16);
     focus._leaflet.openPopup();
@@ -144,9 +184,119 @@ export async function render(el, app) {
     locBtn.setAttribute('aria-pressed', 'false');
   });
 
+  // 規劃路線模式：點地圖加點，完成後填名稱與負責隊伍
+  const draft = L.polyline([], { color: '#f97316', weight: 5, opacity: 0.95 });
+  const vertexLayer = L.layerGroup();
+  const bar = el.querySelector('#routeBar');
+  const tools = el.querySelector('.map-tools');
+
+  function redrawDraft() {
+    draft.setLatLngs(drawing.points).addTo(map);
+    vertexLayer.clearLayers().addTo(map);
+    drawing.points.forEach((p, i) => L.circleMarker(p, { radius: i === drawing.points.length - 1 ? 7 : 5, color: '#fff', weight: 2, fillColor: '#f97316', fillOpacity: 1, interactive: false }).addTo(vertexLayer));
+    el.querySelector('#routeDist').textContent = fmtDist(routeLength(drawing.points));
+    el.querySelector('#routeCount').textContent = drawing.points.length ? `${drawing.points.length} 點・繼續點地圖延伸` : '點地圖加入路線點';
+    el.querySelector('#routeUndo').disabled = !drawing.points.length;
+  }
+
+  function startDrawing(route) {
+    if (!c) return toast('請先選擇案件');
+    map.closePopup();
+    drawing = { id: route?.id || null, points: route ? route.points.map((p) => [...p]) : [], base: route || null };
+    bar.classList.remove('hidden');
+    tools.classList.add('hidden');
+    el.querySelector('#hint').classList.add('hidden');
+    drawRoutes();
+    redrawDraft();
+  }
+
+  function stopDrawing() {
+    drawing = null;
+    draft.remove();
+    vertexLayer.remove();
+    bar.classList.add('hidden');
+    tools.classList.remove('hidden');
+    el.querySelector('#hint').classList.remove('hidden');
+    drawRoutes();
+  }
+
+  map.on('click', (e) => {
+    if (!drawing) return;
+    drawing.points.push([+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)]);
+    redrawDraft();
+  });
+  el.querySelector('#routeBtn').onclick = () => startDrawing(null);
+  el.querySelector('#routeUndo').onclick = () => {
+    drawing.points.pop();
+    redrawDraft();
+  };
+  el.querySelector('#routeCancel').onclick = () => {
+    if (drawing.points.length > 1 && !drawing.base && !confirm('放棄這條路線？')) return;
+    stopDrawing();
+  };
+  el.querySelector('#routeDone').onclick = () => {
+    if (drawing.points.length < 2) return toast('至少需要兩個點');
+    const base = drawing.base;
+    const teams = [...new Set((c.teams || []).map((t) => t.name).filter(Boolean))];
+    const color = base?.color || ROUTE_COLORS[(c.routes || []).length % ROUTE_COLORS.length];
+    const s = sheet(`
+      <h2>${base ? '更新路線' : '儲存路線'}</h2>
+      <p class="small">長度 <b>${fmtDist(routeLength(drawing.points))}</b>・${drawing.points.length} 點</p>
+      <div class="fld"><label for="rtName">路線名稱</label><input type="text" id="rtName" value="${esc(base?.name || `路線 ${(c.routes || []).length + 1}`)}"></div>
+      <div class="fld"><label for="rtTeam">負責隊伍</label>
+        <input type="text" id="rtTeam" list="rtTeams" value="${esc(base?.team || '')}" placeholder="例如：第二梯">
+        <datalist id="rtTeams">${teams.map((t) => `<option value="${esc(t)}">`).join('')}</datalist></div>
+      <fieldset class="fld swatches"><legend>顏色</legend>${ROUTE_COLORS.map((col, i) => `<label><input type="radio" name="rtColor" value="${col}" ${col === color ? 'checked' : ''}><span style="background:${col}"></span><span class="sr-only">顏色 ${i + 1}</span></label>`).join('')}</fieldset>
+      <div class="fld"><label for="rtNote">備註</label><textarea id="rtNote" rows="2" placeholder="搜索重點、注意事項">${esc(base?.note || '')}</textarea></div>
+      <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="rtSave">${icon('cloud')}儲存並上傳</button></div>
+      <p class="muted small" style="margin-top:6px">離線時先存在手機，連線後同步會自動上傳給全隊。</p>`);
+    s.querySelector('#rtSave').onclick = async () => {
+      const auth = beginAuth(); // 點擊後第一件事，Google 登入視窗才不會被擋
+      const route = {
+        id: drawing.id || `r${Date.now().toString(36)}`,
+        name: s.querySelector('#rtName').value.trim() || '未命名路線',
+        team: s.querySelector('#rtTeam').value.trim(),
+        color: s.querySelector('input[name="rtColor"]:checked')?.value || color,
+        note: s.querySelector('#rtNote').value.trim(),
+        points: drawing.points,
+        updated: new Date().toISOString(),
+      };
+      await saveRoutes((routes) => (routes.some((r) => r.id === route.id) ? routes.map((r) => (r.id === route.id ? route : r)) : [...routes, route]), auth);
+      closeSheet();
+      stopDrawing();
+    };
+  };
+
+  async function saveRoutes(change, auth) {
+    const raw = await db.get('cases', c.id);
+    const next = { ...raw, routes: change(raw.routes || []) };
+    const errors = validateCase(next);
+    if (errors.length) return toast(errors.join('；'), 5000);
+    const r = await saveAndUpload(next, auth);
+    await app.reload();
+    c = app.current;
+    toast(r.uploaded ? '路線已儲存並上傳' : r.reason, r.uploaded ? 2400 : 6000);
+  }
+
   // 彈出視窗內的按鈕
   map.on('popupopen', (e) => {
+    if (drawing) return map.closePopup(); // 規劃時點到既有路線只加點，不開資訊框
     const node = e.popup.getElement();
+    node.querySelector('[data-route-edit]')?.addEventListener('click', (ev) => {
+      startDrawing(c.routes.find((r) => r.id === ev.currentTarget.dataset.routeEdit));
+    });
+    node.querySelector('[data-route-gpx]')?.addEventListener('click', (ev) => {
+      const r = c.routes.find((x) => x.id === ev.currentTarget.dataset.routeGpx);
+      downloadFile(`${r.name}.gpx`, toGpx({ name: r.name, tracks: [{ name: r.name, points: r.points.map(([lat, lng]) => [lat, lng, null]) }] }), 'application/gpx+xml');
+    });
+    node.querySelector('[data-route-del]')?.addEventListener('click', async (ev) => {
+      const id = ev.currentTarget.dataset.routeDel;
+      if (!confirm('刪除這條路線？全隊同步後都會移除。')) return;
+      const auth = beginAuth();
+      map.closePopup();
+      await saveRoutes((routes) => routes.filter((r) => r.id !== id), auth);
+      drawRoutes();
+    });
     node.querySelector('[data-del-point]')?.addEventListener('click', async (ev) => {
       if (!confirm('刪除這個標記？')) return;
       await deletePoint(Number(ev.target.dataset.delPoint));
@@ -166,7 +316,7 @@ export async function render(el, app) {
   let lastLongPress = 0;
   const container = map.getContainer();
   const onLongPress = (latlng) => {
-    if (Date.now() - lastLongPress < 800) return;
+    if (drawing || Date.now() - lastLongPress < 800) return;
     lastLongPress = Date.now();
     navigator.vibrate?.(30);
     openPointSheet(latlng);
