@@ -128,7 +128,15 @@ function subjectCard(c) {
 
 function ippCard(c) {
   const i = c.ipp;
-  if (!has(i.lastSeen) && !has(i.likelyArea)) return '';
+  // IPP 座標可能填在 ipp 欄位，也可能是地圖標記裡類型為 IPP 的那一個
+  const marker = c.area.markers.find((m) => m.type === 'ipp' && m.lat != null);
+  const lat = i.lat ?? marker?.lat;
+  const lng = i.lng ?? marker?.lng;
+  const hasCoord = lat != null && lng != null;
+  if (!has(i.lastSeen) && !has(i.likelyArea) && !hasCoord) return '';
+  const t = hasCoord ? wgs84ToTwd97(lat, lng) : null;
+  // 有對應的地圖標記就直接聚焦它，否則用座標標一個點
+  const mapHref = marker ? `#/map?focus=${encodeURIComponent(marker.name)}` : `#/map?lat=${lat}&lng=${lng}`;
   return fold(
     'ipp',
     '最後已知點（IPP）',
@@ -137,7 +145,9 @@ function ippCard(c) {
         ${row('最後目擊', i.lastSeen)}
         ${row('最可能地點', i.likelyArea)}
         ${row('最後交談', i.lastContact)}
-      </dl>`
+        ${hasCoord ? `<dt>座標</dt><dd class="mono">${lat}, ${lng}<br>TWD97 ${Math.round(t.x)}, ${Math.round(t.y)}</dd>` : ''}
+      </dl>
+      ${hasCoord ? `<div class="btn-row" style="margin-top:10px"><a class="btn small" href="${mapHref}">${icon('map', { size: 18 })}在地圖上看</a></div>` : '<p class="muted small" style="margin-top:8px">還沒有 IPP 座標，按右上角「編輯」可以在地圖上選。</p>'}`
   );
 }
 
@@ -246,7 +256,7 @@ export function render(el, app) {
       ${timelineCard(c)}
       ${areaCard(c)}
       ${cloud.user ? fold('photos', '現場照片', '<div id="scenePhotos"><p class="muted small">讀取中…</p></div>') : ''}
-      <div class="btn-row"><a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a></div>
+      <div class="btn-row"><a class="btn" href="#/edit?id=${encodeURIComponent(c.id)}">編輯案件資料</a><a class="btn" href="#/case">案件設定</a></div>
       <p class="muted small" style="text-align:center">資料來源：${esc(c.meta.source || '')}　更新：${esc(c.meta.updated || '')}</p>
     </div>`;
 

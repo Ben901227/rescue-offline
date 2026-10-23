@@ -378,3 +378,25 @@ details.fold > summary h2 { flex: 1; min-width: 0; }
 #subjectPhotos > .btn { margin-bottom: 10px; }
 
 .settings-group { font-size: 1rem; color: var(--muted); margin: 18px 0 -2px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+
+/* 設定頁的連結清單 */
+.link-list { display: flex; flex-direction: column; }
+.link-list a { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 2px; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.link-list a:first-child { border-top: 0; }
+.link-list a span, .link-card > span:last-child { color: var(--muted); font-size: 1.3rem; }
+.link-card { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; }
+.link-card > span:nth-child(2) { flex: 1; }
+.link-card .ico { color: var(--accent); flex: none; }
+.btn.danger-fill { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* 案件目錄 */
+.case-switch::after { content: "▾"; flex: none; font-size: .85rem; color: var(--muted); margin-left: -2px; }
+.dir-card { display: flex; align-items: center; gap: 8px; padding: 10px; }
+.dir-card.current { border-color: var(--accent); }
+.dir-main { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; min-height: 64px; }
+.dir-photo { flex: none; width: 60px; height: 72px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); overflow: hidden; }
+.dir-photo img { width: 100%; height: 100%; object-fit: cover; }
+.dir-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dir-title { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dir-more { flex: none; width: 44px; padding: 0; }
+input[type="search"] { -webkit-appearance: none; appearance: none; }

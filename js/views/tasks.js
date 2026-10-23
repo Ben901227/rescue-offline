@@ -1,4 +1,4 @@
-import { esc, has } from '../ui.js';
+import { esc, has, confirmBox } from '../ui.js';
 import { kv } from '../db.js';
 import { icon } from '../icons.js';
 import { routeLength } from '../lib/route.js';
@@ -65,7 +65,7 @@ export async function render(el, app) {
         }
       </section>
       <div id="checklists" class="stack"></div>
-      <div class="btn-row"><a class="btn" href="#/settings">編輯裝備清單</a>${has(c.checklist) ? '<button class="btn danger" id="resetBtn">重置所有勾選</button>' : ''}</div>
+      <div class="btn-row"><a class="btn" href="#/case">編輯裝備清單</a>${has(c.checklist) ? '<button class="btn danger" id="resetBtn">重置所有勾選</button>' : ''}</div>
       <p class="muted small" style="text-align:center">勾選狀態只存在這支手機。</p>
     </div>`;
 
@@ -92,7 +92,7 @@ export async function render(el, app) {
     draw();
   });
   el.querySelector('#resetBtn')?.addEventListener('click', async () => {
-    if (!confirm('清除所有勾選？')) return;
+    if (!(await confirmBox('清除所有勾選？'))) return;
     checked = {};
     await kv.set(key(c), checked);
     draw();

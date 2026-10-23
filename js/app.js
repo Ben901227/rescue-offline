@@ -10,10 +10,12 @@ import * as cases from './views/cases.js';
 import * as settings from './views/settings.js';
 import * as edit from './views/editor.js';
 import * as admin from './views/admin.js';
+import * as casesettings from './views/casesettings.js';
+import * as directory from './views/directory.js';
 import { checkUpdate, applyUpdate } from './update.js';
 import * as cloud from './cloud.js';
 
-const views = { summary, map, gps, tasks, cases, settings, edit, admin };
+const views = { summary, map, gps, tasks, cases, settings, edit, admin, case: casesettings, list: directory };
 const viewEl = document.getElementById('view');
 
 const app = {
@@ -57,11 +59,13 @@ async function route({ keepScroll = false } = {}) {
   active?.destroy?.();
   viewEl.innerHTML = '';
   viewEl.className = '';
-  document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.tab === name));
+  // 同步頁從案件目錄進去，底部仍亮「案件」
+  const tabName = name === 'cases' ? 'list' : name;
+  document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.tab === tabName));
   active = views[name];
   window.scrollTo(0, 0);
-  if (!app.current && !['cases', 'gps', 'settings', 'edit', 'admin'].includes(name)) {
-    viewEl.innerHTML = `<div class="card empty"><p>尚未選擇案件</p><a class="btn primary" href="#/cases">登入或選擇案件</a></div>`;
+  if (!app.current && !['cases', 'gps', 'settings', 'edit', 'admin', 'list'].includes(name)) {
+    viewEl.innerHTML = `<div class="card empty"><p>尚未選擇案件</p><a class="btn primary" href="#/list">選擇案件</a></div>`;
     return;
   }
   await active.render(viewEl, app);
@@ -74,7 +78,7 @@ function updateNet() {
   el.classList.toggle('offline', !navigator.onLine);
 }
 
-document.getElementById('caseSwitch').addEventListener('click', () => app.go('cases'));
+document.getElementById('caseSwitch').addEventListener('click', () => app.go('list'));
 document.getElementById('settingsBtn').addEventListener('click', () => app.go('settings'));
 window.addEventListener('hashchange', route);
 window.addEventListener('online', () => {
@@ -130,7 +134,7 @@ await app.reload();
 
 // 雲端：登入狀態與資料變動時，重畫不會打斷操作的頁面（地圖、編輯中的頁面不重畫）
 let currentTab = () => (location.hash.match(/^#\/(\w+)/) || [])[1] || 'summary';
-const SAFE_RERENDER = ['summary', 'tasks', 'cases'];
+const SAFE_RERENDER = ['summary', 'tasks', 'cases', 'list'];
 // 背景更新時保持捲動位置，不要把正在看的人跳回頂端
 window.addEventListener('cloud-data', () => SAFE_RERENDER.includes(currentTab()) && route({ keepScroll: true }));
 let lastCloud = '';
@@ -142,5 +146,5 @@ cloud.onChange((s) => {
 });
 cloud.start(app);
 
-if (!app.current && !location.hash.startsWith('#/cases')) app.go('cases');
+if (!app.current && !/^#\/(cases|list)/.test(location.hash)) app.go(app.cases.length ? 'list' : 'cases');
 else await route();

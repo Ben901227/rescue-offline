@@ -143,3 +143,28 @@ export function ask(title, { value = '', placeholder = '', ok = '確定', hint =
     document.querySelector('.sheet-backdrop')?.addEventListener('click', () => finish(null));
   });
 }
+
+// 取代 window.confirm（部分 App 內嵌瀏覽器不顯示系統對話框，會直接當成「取消」）
+// 回傳 true／false；刪除、移除、清除這類動作的確定鈕用紅色
+export function confirmBox(message, { ok, cancel = '取消' } = {}) {
+  const danger = /刪除|移除|清除|放棄|登出|取消「/.test(message);
+  return new Promise((resolve) => {
+    const s = sheet(`
+      <h2>${esc(message)}</h2>
+      <div class="btn-row" style="margin-top:14px">
+        <button type="button" class="btn ${danger ? 'danger-fill' : 'primary'}" id="cfOk">${esc(ok || (danger ? '確定' : '確定'))}</button>
+        <button type="button" class="btn" id="cfCancel">${esc(cancel)}</button>
+      </div>`);
+    let done = false;
+    const finish = (v) => {
+      if (done) return;
+      done = true;
+      closeSheet();
+      resolve(v);
+    };
+    s.querySelector('#cfOk').onclick = () => finish(true);
+    s.querySelector('#cfCancel').onclick = () => finish(false);
+    document.querySelector('.sheet-backdrop')?.addEventListener('click', () => finish(false));
+    setTimeout(() => s.querySelector('#cfCancel').focus(), 50);
+  });
+}

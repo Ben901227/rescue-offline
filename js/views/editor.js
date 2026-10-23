@@ -1,7 +1,7 @@
 // 案件編輯器：用表單填寫案件，存到本機或下載 JSON 上傳到 Drive。
 // 表單由下方 SECTIONS 描述產生，要加欄位只需改這份描述。
 
-import { esc, toast } from '../ui.js';
+import { esc, toast, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { db, kv } from '../db.js';
 import { validateCase } from '../lib/caseSchema.js';
@@ -217,7 +217,7 @@ export async function render(el, app) {
   const template = await fetch('cases/template.json').then((r) => r.json()).catch(() => ({ meta: {}, checklist: [] }));
   const original = editId ? await db.get('cases', editId) : null;
   if (editId && !original) {
-    el.innerHTML = `<div class="card empty"><p>找不到案件 ${esc(editId)}</p><a class="btn" href="#/cases">回案件列表</a></div>`;
+    el.innerHTML = `<div class="card empty"><p>找不到案件 ${esc(editId)}</p><a class="btn" href="#/list">回案件目錄</a></div>`;
     return;
   }
   const draftKey = editId || '__new';
@@ -267,7 +267,7 @@ export async function render(el, app) {
         <section class="card">
           <h2>裝備清單</h2>
           <p class="small">${(draft.checklist || []).map((g) => `${esc(g.group)}（${g.items.length}）`).join('、') || '無'}</p>
-          <p class="muted small" style="margin-top:4px">${original ? '<a href="#/settings">到設定頁編輯裝備清單</a>' : '新案件會套用東搜預設清單，儲存後可到設定頁調整。'}</p>
+          <p class="muted small" style="margin-top:4px">${original ? '<a href="#/case">到「案件設定」編輯裝備清單</a>' : '新案件會套用東搜預設清單，儲存後可到「案件設定」調整。'}</p>
         </section>
         ${original && cloud.user ? `<section class="card" id="photoCard">
           <h2>現場照片</h2>
@@ -322,7 +322,7 @@ export async function render(el, app) {
     if (!pb) return;
     if (pb.dataset.photoView) return openLightbox(photos.find((p) => p.id === pb.dataset.photoView));
     if (pb.dataset.photoDel) {
-      if (!confirm('刪除這張照片？全隊都會移除。')) return;
+      if (!(await confirmBox('刪除這張照片？全隊都會移除。'))) return;
       try {
         await deletePhoto(original.id, pb.dataset.photoDel);
       } catch (err) {
@@ -355,10 +355,10 @@ export async function render(el, app) {
     saveDraft();
   });
 
-  root.addEventListener('change', (e) => {
+  root.addEventListener('change', async (e) => {
     const t = e.target;
     if (t.id === 'foundToggle') {
-      if (!t.checked && draft.found && Object.values(draft.found).some((x) => x) && !confirm('取消「已尋獲」會清除發現失聯者的資料，確定？')) {
+      if (!t.checked && draft.found && Object.values(draft.found).some((x) => x) && !(await confirmBox('取消「已尋獲」會清除發現失聯者的資料，確定？'))) {
         t.checked = true;
         return;
       }
@@ -392,7 +392,7 @@ export async function render(el, app) {
       const i = +b.dataset.i;
       if (b.dataset.rep === 'add') arr.push(blankRow(path));
       if (b.dataset.rep === 'del') {
-        if (!confirm('刪除這一筆？')) return;
+        if (!(await confirmBox('刪除這一筆？'))) return;
         arr.splice(i, 1);
       }
       if (b.dataset.rep === 'up') [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];

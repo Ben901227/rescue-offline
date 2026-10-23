@@ -1,6 +1,6 @@
 // 管理頁（只有管理員）：成員名單、各手機的使用記錄、匯入案件 JSON。
 // 真正的權限檢查在 firestore.rules；這裡只是不讓非管理員看到操作介面。
-import { esc, toast, copyText, pickFile, sheet, closeSheet } from '../ui.js';
+import { esc, toast, copyText, pickFile, sheet, closeSheet, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { state, isAdmin, listMembers, setMember, removeMember, listLogs, saveAndUpload } from '../cloud.js';
 import { validateCase } from '../lib/caseSchema.js';
@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function render(el, app) {
   if (!state.user || !isAdmin()) {
-    el.innerHTML = `<div class="card empty"><p>只有管理員可以使用這一頁。</p><a class="btn" href="#/settings">回設定</a></div>`;
+    el.innerHTML = `<div class="card empty"><p>只有管理員可以使用這一頁。</p><a class="btn" href="#/settings">回一般設定</a></div>`;
     return;
   }
   const root = document.createElement('div');
@@ -119,7 +119,7 @@ export async function render(el, app) {
     const mail = b.dataset.email;
     try {
       if (b.dataset.act === 'remove') {
-        if (!confirm(`把 ${mail} 移出成員名單？對方之後就看不到任何案件。`)) return;
+        if (!(await confirmBox(`把 ${mail} 移出成員名單？對方之後就看不到任何案件。`))) return;
         await removeMember(mail);
         toast('已移除');
       } else {
@@ -143,7 +143,7 @@ export async function render(el, app) {
     }
     const errors = validateCase(data);
     if (errors.length) return toast(errors.join('；'), 6000);
-    if (!confirm(`匯入「${data.meta.name}」到雲端？全隊同步後都會看到。`)) return;
+    if (!(await confirmBox(`匯入「${data.meta.name}」到雲端？全隊同步後都會看到。`))) return;
     const { _sync, ...clean } = data;
     const r = await saveAndUpload({ ...clean, routes: (clean.routes || []).map((x) => ({ ...x, id: x.id || `r${Math.random().toString(36).slice(2, 8)}` })) });
     toast(r.uploaded ? `已匯入「${data.meta.name}」` : r.reason, 5000);

@@ -1,4 +1,4 @@
-import { esc, copyText, shareText, toast, downloadFile, fmtTime, ask } from '../ui.js';
+import { esc, copyText, shareText, toast, downloadFile, fmtTime, ask, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { wgs84ToTwd97, toDMS, parseCoordinate, distance } from '../lib/twd97.js';
 import { toGpx } from '../lib/gpx.js';
@@ -128,7 +128,7 @@ export async function render(el, app) {
   };
   $('ptList').onclick = async (e) => {
     const id = e.target.dataset.del;
-    if (!id || !confirm('刪除這個點？')) return;
+    if (!id || !(await confirmBox('刪除這個點？'))) return;
     await deletePoint(Number(id));
     markers = await caseMarkers(c);
     renderPoints();

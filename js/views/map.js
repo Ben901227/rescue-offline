@@ -1,4 +1,4 @@
-import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile, ask } from '../ui.js';
+import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile, ask, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { db } from '../db.js';
 import { wgs84ToTwd97 } from '../lib/twd97.js';
@@ -245,8 +245,8 @@ export async function render(el, app) {
     drawing.points.pop();
     redrawDraft();
   };
-  el.querySelector('#routeCancel').onclick = () => {
-    if (drawing.points.length > 1 && !drawing.base && !confirm('放棄這條路線？')) return;
+  el.querySelector('#routeCancel').onclick = async () => {
+    if (drawing.points.length > 1 && !drawing.base && !(await confirmBox('放棄這條路線？'))) return;
     stopDrawing();
   };
   el.querySelector('#routeDone').onclick = () => {
@@ -309,13 +309,13 @@ export async function render(el, app) {
     });
     node.querySelector('[data-route-del]')?.addEventListener('click', async (ev) => {
       const id = ev.currentTarget.dataset.routeDel;
-      if (!confirm('刪除這條路線？全隊同步後都會移除。')) return;
+      if (!(await confirmBox('刪除這條路線？全隊同步後都會移除。'))) return;
       map.closePopup();
       await saveRoutes((routes) => routes.filter((r) => r.id !== id));
       drawRoutes();
     });
     node.querySelector('[data-del-point]')?.addEventListener('click', async (ev) => {
-      if (!confirm('刪除這個標記？')) return;
+      if (!(await confirmBox('刪除這個標記？'))) return;
       await deletePoint(Number(ev.target.dataset.delPoint));
       map.closePopup();
       drawMarkers();
@@ -437,7 +437,7 @@ export async function render(el, app) {
     s.querySelectorAll('[data-deltrack]').forEach((b) => {
       b.onclick = async (e) => {
         e.preventDefault();
-        if (!confirm('刪除這份航跡？')) return;
+        if (!(await confirmBox('刪除這份航跡？'))) return;
         await db.delete('tracks', Number(b.dataset.deltrack));
         closeSheet();
         drawTracks();
@@ -498,7 +498,7 @@ export async function render(el, app) {
       };
     });
     s.querySelector('#dlClear').onclick = async () => {
-      if (!confirm('清除後離線時將看不到地圖，確定？')) return;
+      if (!(await confirmBox('清除後離線時將看不到地圖，確定？'))) return;
       await clearTiles();
       closeSheet();
       toast('已清除離線圖磚');
