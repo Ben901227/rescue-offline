@@ -17,12 +17,12 @@
 - **切換案件**：底部「案件」（或點頂部案件名稱）打開「案件目錄」（`#/list`），可搜尋、依狀態篩選，一次顯示 20 個、其餘按「顯示更多」；每個案件的「⋯」有編輯、案件設定、上傳雲端、刪除。登入狀態存在手機，之後離線也維持。
 - **權限**：由 [firestore.rules](firestore.rules) 在伺服器端強制執行：
   - 只有 `members` 名單上的帳號（加上寫死在規則裡的第一位管理員 `ben901227@gmail.com`）能讀寫案件、路線、照片。
-  - 只有管理員能管理名單、刪除案件、看所有人的使用記錄；隊員只能寫自己的使用記錄、只能刪自己上傳的照片。
+  - 只有管理員能管理名單、刪除案件、看所有人的使用記錄；隊員只能寫自己的使用記錄、只能刪自己上傳的照片；握手範圍成員都能新增，只有管理員能刪除。
 - **管理員**：⚙︎ 設定 →「管理成員與記錄」可加入／移除成員、改角色、看各手機的使用記錄、匯入舊的案件 JSON。
 - **被移出名單**：對方的手機下次連線時就讀不到，並自動清除手機上的雲端案件與離線快取。若手機一直不連線，已下載的資料仍會留著。
 - **即時同步**：有網路時，別人更新的案件、路線、照片會自動出現；離線時的修改由 Firestore 排隊，連線後自動上傳。路線每條分開存，多人同時編輯不會互相覆蓋；案件內容同時編輯時以最後儲存的為準。
 - **照片**：在手機上壓縮成長邊 1280px、約 300 KB 內（另存約 30 KB 縮圖），直接存在 Firestore（每張上限 700 KB）。免費額度 1 GiB 約可放 3,000 張。手機離線快取不設上限，看過的照片沒網路也能看。
-- **資料結構**：`cases/{id}`（案件）、`cases/{id}/routes/{id}`、`cases/{id}/photos/{id}`、`logs/{帳號_手機代號}`、`members/{email}`。Firestore 不支援「陣列中的陣列」，寫入時由 [js/lib/fsCodec.js](js/lib/fsCodec.js) 自動轉換。
+- **資料結構**：`cases/{id}`（案件）、`cases/{id}/routes/{id}`、`cases/{id}/photos/{id}`、`cases/{id}/handshakes/{id}`（握手範圍）、`logs/{帳號_手機代號}`、`members/{email}`。Firestore 不支援「陣列中的陣列」，寫入時由 [js/lib/fsCodec.js](js/lib/fsCodec.js) 自動轉換。
 
 ### 一次性設定（已完成，供日後重建參考）
 
@@ -35,6 +35,21 @@
 ```bash
 npx firebase deploy --only firestore:rules
 ```
+
+## 握手範圍（基地台視域）
+
+失聯者手機的握手紀錄 → 基地台看得到的範圍，在地圖上以半透明紅色顯示，多筆取聯集。只有雲端案件可用。
+
+- **匯入**：成員在地圖「航跡與標記」→「握手範圍」→「匯入 TIFF」，選 QGIS（GDAL Viewshed）算好的 GeoTIFF。必須是 TWD97 TM2（EPSG:3826）；RGBA 匯出版看 alpha > 0，單波段看值 > 0。基地台座標預填 TIFF 中心點。
+- **計算**：同一處按「計算」，在電腦上選本機的內政部 20 m DEM（`TW20m_*_twd97.tif`，約 750 MB），輸入基地台座標。演算法照 GDAL viewshed（[js/lib/viewshed.js](js/lib/viewshed.js)），預設觀測者 1 m、目標 1 m、最大 30 km、曲率係數 0.85714。只讀基地台周圍需要的範圍，約 1 秒算完。讀檔與計算在 [js/handshakeWorker.js](js/handshakeWorker.js) 背景執行緒，用 [vendor/geotiff](vendor/geotiff/README.txt)。
+- **儲存**：遮罩裁到最小外框後壓縮存成 Bytes（30 km 範圍約 6 KB），格式見 [js/lib/mask.js](js/lib/mask.js)。
+- **和 QGIS 比對**（DEM 與握手資料含案件位置，只放自己電腦）：
+
+```bash
+node tools/compare-viewshed.mjs <DEM.tif> <QGIS結果.tif> <緯度> <經度>
+```
+
+測試資料比對結果 IoU 0.985（App 算出的格子全部落在 QGIS 範圍內）。
 
 ## 規劃搜救路線（可離線）
 
@@ -74,7 +89,7 @@ npm run serve
 npm test
 ```
 
-涵蓋 TWD97 轉換（與 proj4 對照，誤差 < 1 cm）、GPX/KML 解析、案件檔驗證、使用記錄格式、Firestore 資料轉換、版本一致性。
+涵蓋 TWD97 轉換（與 proj4 對照，誤差 < 1 cm）、視域演算法與握手遮罩編解碼、GPX/KML 解析、案件檔驗證、使用記錄格式、Firestore 資料轉換、版本一致性。
 
 權限規則用 Firebase 模擬器測試（需要 Java）：
 
@@ -82,7 +97,7 @@ npm test
 npm run test:rules
 ```
 
-驗證：未登入／非成員／email 未驗證讀不到；隊員不能刪案件、不能改名單；被移出名單後立刻讀不到；照片大小與上傳者限制；使用記錄只能寫自己的、隊員看不到別人的。
+驗證：未登入／非成員／email 未驗證讀不到；隊員不能刪案件、不能改名單；被移出名單後立刻讀不到；照片大小與上傳者限制；握手範圍成員可新增、只有管理員能刪除；使用記錄只能寫自己的、隊員看不到別人的。
 
 ## 部署（例：GitHub Pages）
 
