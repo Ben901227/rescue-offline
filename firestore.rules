@@ -61,6 +61,18 @@ service cloud.firestore {
           && request.resource.data.thumb == resource.data.thumb;
         allow delete: if isAdmin() || (isMember() && resource.data.by == myEmail());
       }
+
+      // 握手範圍（基地台視域）：遮罩壓縮後存在文件裡；成員可新增，只有管理員能刪除，不能修改
+      match /handshakes/{handshakeId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && request.resource.data.mask is bytes
+          && request.resource.data.mask.size() <= 700 * 1024
+          && request.resource.data.name is string
+          && request.resource.data.by == myEmail();
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
     }
 
     // 使用記錄：每支手機一份；只能寫自己的，管理員能看全部

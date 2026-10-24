@@ -217,6 +217,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
     <p class="group">其他</p>
     <ol>
       <li><a href="#s11"><span class="n">11</span>新增或修改案件（資料組）</a></li>
+      <li><a href="#s12"><span class="n">12</span>握手範圍（基地台看得到的地方）</a></li>
       <li><a href="#legend"><span class="n">?</span>按鈕圖示是什麼意思</a></li>
       <li><a href="#faq"><span class="n">?</span>遇到問題怎麼辦</a></li>
     </ol>
@@ -517,6 +518,23 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
       </ol>
       <p class="muted">填到一半離開也沒關係，App 會自動保存草稿。要調整裝備清單、無線電頻道或分組，到摘要頁最下面按 <b>案件設定</b>。</p>
     </article>
+    <article class="step" id="s12">
+      <div class="step-head"><span class="num">12</span><h3>握手範圍（基地台看得到的地方）</h3></div>
+      <p>失聯者手機和基地台的「握手」紀錄，代表人可能在<b>這座基地台看得到的地方</b>。地圖上用<b>半透明紅色</b>標出來；有好幾筆時，會合成一個範圍（任何一座基地台看得到的地方都算）。基地台位置用紅色菱形標出。</p>
+      <p><b>所有人：看範圍</b></p>
+      <ol class="do">
+        <li>按最下面的 <b class="key">地圖</b>，再按右邊的圖層按鈕（航跡與標記）。</li>
+        <li>在「握手範圍」勾選或取消 <b>顯示握手範圍</b>。</li>
+      </ol>
+      <p class="muted">同步過一次之後，沒有網路也看得到。只有上傳到雲端的案件才有握手範圍。</p>
+      <p><b>加入握手範圍</b>（在同一個「握手範圍」區塊，成員都可以）</p>
+      <ol class="do">
+        <li><b>已經用 QGIS 算好</b>：按 <span class="btnlike plain">匯入 TIFF</span>，選算好的 TIFF 檔。基地台座標會自動填 TIFF 的中心點，確認後按 <span class="btnlike">儲存並上傳</span>。</li>
+        <li><b>沒有 GIS 軟體</b>：在<b>電腦</b>上按 <span class="btnlike plain">計算</span>，輸入基地台座標（經緯度或 TWD97 都可以），按 <span class="btnlike plain">選擇 DEM 檔</span> 選內政部 20 m DEM（TWD97 的 GeoTIFF 檔，約 750 MB），再按 <span class="btnlike">計算並上傳</span>。約幾秒鐘就算好。</li>
+        <li>高度和距離預設是觀測者 1 m、目標 1 m、最大 30 km，和 QGIS 的做法一樣，一般不用改。</li>
+      </ol>
+      <p class="muted">算好或匯入後全隊會自動收到。要刪除某一筆，請管理員按那一筆旁邊的 <b>刪除</b>。</p>
+    </article>
   </section>
 
   <section class="part" id="legend" aria-labelledby="p4">
@@ -529,7 +547,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: .9rem; text-align: ce
       <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9l-2-3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></i><span><b>案件</b>：案件目錄、切換與新增案件；下方「同步與登入」可登入、看離線準備</span></div>
       <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></i><span><b>齒輪</b>：一般設定（帳號、外觀、版本）</span></div>
       <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></i><span><b>路線</b>：畫搜救路線</span></div>
-      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg></i><span><b>圖層</b>：航跡檔、圖例</span></div>
+      <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg></i><span><b>圖層</b>：航跡檔、握手範圍、圖例</span></div>
       <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></i><span><b>下載</b>：存離線地圖</span></div>
       <div><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></i><span><b>地圖選點</b>：在地圖上點位置</span></div>
     </div>

@@ -1,5 +1,5 @@
 // 改了任何 App 檔案就把版本號 +1，手機下次連線時會更新快取。
-const VERSION = 'v0.0.21';
+const VERSION = 'v0.0.22';
 const SHELL_CACHE = `shell-${VERSION}`;
 const TILE_CACHE = 'tiles-v1';
 const TILE_HOSTS = ['tile.happyman.idv.tw', 'wmts.nlsc.gov.tw'];
@@ -27,6 +27,12 @@ const SHELL = [
   'js/config.js',
   'js/cloud.js',
   'js/photos.js',
+  'js/handshakes.js',
+  'js/handshakeWorker.js',
+  'js/handshakeLayer.js',
+  'js/lib/viewshed.js',
+  'js/lib/mask.js',
+  'vendor/geotiff/geotiff.js',
   'js/lib/fsCodec.js',
   'js/views/admin.js',
   'vendor/firebase/firebase.js',

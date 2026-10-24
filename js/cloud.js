@@ -166,7 +166,16 @@ function listenRoutes(caseId) {
     },
     (err) => log.warn('同步', '路線同步失敗', err.message)
   );
-  routeUnsubs.set(caseId, unsub);
+  // 握手範圍：地圖頁自己讀，這裡只負責在背景同步到離線快取（沒開過地圖也能離線看）
+  const hsUnsub = onSnapshot(
+    collection(fs, 'cases', caseId, 'handshakes'),
+    () => {},
+    (err) => log.warn('同步', '握手範圍同步失敗', err.message)
+  );
+  routeUnsubs.set(caseId, () => {
+    unsub();
+    hsUnsub();
+  });
 }
 
 function startCaseListener() {
@@ -370,6 +379,7 @@ export async function removeMember(mail) {
 export async function deleteCase(id) {
   for (const d of (await getDocs(collection(fs, 'cases', id, 'routes'))).docs) await deleteDoc(d.ref);
   for (const d of (await getDocs(collection(fs, 'cases', id, 'photos'))).docs) await deleteDoc(d.ref);
+  for (const d of (await getDocs(collection(fs, 'cases', id, 'handshakes'))).docs) await deleteDoc(d.ref);
   await deleteDoc(doc(fs, 'cases', id));
   log.info('案件', `刪除雲端案件：${id}`);
 }

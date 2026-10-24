@@ -1,22 +1,27 @@
 import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile, ask, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { db } from '../db.js';
-import { wgs84ToTwd97 } from '../lib/twd97.js';
+import { wgs84ToTwd97, parseCoordinate } from '../lib/twd97.js';
 import { parseTrackFile, toGpx } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
-import { saveAndUpload, state as cloud } from '../cloud.js';
+import { saveAndUpload, state as cloud, isAdmin, onChange as onCloudChange } from '../cloud.js';
 import { listPhotos, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 import * as log from '../log.js';
 import { subscribe } from '../geo.js';
 import { caseMarkers, setMarkerCoords, clearMarkerCoords, addPoint, deletePoint, TYPE_LABEL, fmtDist } from '../markers.js';
 import { BASEMAPS, tileUrls, downloadTiles, cachedTileCount, clearTiles } from '../tiles.js';
+import { listenHandshakes, addHandshake, deleteHandshake, readTiff, computeFromDem } from '../handshakes.js';
+import { createHandshakeLayer } from '../handshakeLayer.js';
+import { VIEWSHED_DEFAULTS } from '../lib/viewshed.js';
 
 const TRACK_COLORS = ['#e11d48', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2'];
 const MAX_TILES = 5000;
 
 let map = null;
 let unsub = null;
+let hsUnsub = null;
+let cloudUnsub = null;
 let abort = null;
 
 const pref = {
@@ -145,6 +150,41 @@ export async function render(el, app) {
       routeById[r.id] = line;
     }
   }
+
+  // 握手範圍（只有雲端案件有）：所有筆數聯集成一個圖層，基地台另外標出
+  // 放在路線、航跡（overlayPane 400）下面，不要把路線染紅
+  map.createPane('handshake').style.zIndex = 350;
+  const hsLayer = createHandshakeLayer('handshake');
+  const stationLayer = L.layerGroup();
+  const cloudCase = () => c?._sync?.source === 'cloud' && !!cloud.user;
+  let handshakes = [];
+  function drawHandshakes() {
+    const show = pref.get('handshake') !== '0';
+    hsLayer.setMasks(handshakes);
+    stationLayer.clearLayers();
+    for (const h of handshakes) {
+      if (!h.station) continue;
+      L.marker([h.station.lat, h.station.lng], { icon: pinIcon('station'), title: h.name })
+        .bindPopup(`<b>${esc(h.name)}</b> <span class="muted">基地台</span><br><span class="mono">${coordText(h.station.lat, h.station.lng)}</span>`)
+        .addTo(stationLayer);
+    }
+    for (const l of [hsLayer, stationLayer]) show && handshakes.length ? l.addTo(map) : l.remove();
+  }
+  // 直接重新整理在地圖頁時，登入狀態比畫面晚到：登入後再開始讀
+  function startHandshakes() {
+    if (hsUnsub || !cloudCase()) return;
+    hsUnsub = listenHandshakes(c.id, (list) => {
+      handshakes = list;
+      drawHandshakes();
+    });
+    const box = document.querySelector('#hsBox');
+    if (box) {
+      box.innerHTML = handshakeSection();
+      bindHandshakeSection(box);
+    }
+  }
+  startHandshakes();
+  cloudUnsub = onCloudChange(() => startHandshakes());
 
   await Promise.all([drawMarkers(), drawTracks()]);
   drawPhotos();
@@ -407,9 +447,14 @@ export async function render(el, app) {
       }</div>
       <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="importTrack">匯入 GPX / KML</button></div>
       ${missing.length ? `<h3 style="margin-top:16px">座標待補</h3><ul style="margin:6px 0 0;padding-left:18px">${missing.map((m) => `<li>${esc(m.name)}${m.note ? ` <span class="muted small">${esc(m.note)}</span>` : ''}</li>`).join('')}</ul><p class="muted small" style="margin-top:6px">在地圖上長按該位置即可補上。</p>` : ''}
+      <h3 style="margin-top:16px">握手範圍</h3>
+      <div id="hsBox" style="margin-top:6px">${handshakeSection()}</div>
       <h3 style="margin-top:16px">圖例</h3>
-      <div class="looks" style="margin-top:6px">${['ipp', 'found', 'camp', 'cp', 'poi', 'mark', 'gps', 'wpt'].map((t) => `<span style="display:inline-flex;gap:6px;align-items:center"><span class="pin ${t}" style="display:inline-block;width:14px;height:14px;border-width:2px"></span>${TYPE_LABEL[t]}</span>`).join('')}</div>
+      <div class="looks" style="margin-top:6px">${['ipp', 'found', 'camp', 'cp', 'poi', 'mark', 'gps', 'wpt'].map((t) => `<span style="display:inline-flex;gap:6px;align-items:center"><span class="pin ${t}" style="display:inline-block;width:14px;height:14px;border-width:2px"></span>${TYPE_LABEL[t]}</span>`).join('')}
+        <span style="display:inline-flex;gap:6px;align-items:center"><span class="pin station" style="display:inline-block;width:12px;height:12px;padding:0;margin:0 2px;border-width:2px"></span>基地台</span>
+        <span style="display:inline-flex;gap:6px;align-items:center"><span style="display:inline-block;width:14px;height:14px;padding:0;background:rgba(255,0,0,.61);border-radius:2px"></span>握手範圍（基地台看得到的地方）</span></div>
     `);
+    bindHandshakeSection(s);
     s.querySelector('#importTrack').onclick = async () => {
       const file = await pickFile('.gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml');
       if (!file) return;
@@ -444,6 +489,125 @@ export async function render(el, app) {
       };
     });
   };
+
+  // 握手範圍：清單、開關；成員可匯入 TIFF、計算，管理員可刪除
+  function handshakeSection() {
+    if (!cloudCase()) return '<p class="muted small">上傳到雲端後才能使用握手範圍</p>';
+    const admin = isAdmin();
+    return `
+      <label class="check"><input type="checkbox" id="hsShow" ${pref.get('handshake') !== '0' ? 'checked' : ''}><span>顯示握手範圍（聯集）</span></label>
+      ${handshakes.length
+        ? handshakes.map((h) => `<div class="check"><span style="flex:1"><b style="color:#dc2626">■</b> ${esc(h.name)} <span class="muted small">${h.source === 'compute' ? '計算' : '匯入'}</span><br><span class="muted small">${esc((h.by || '').split('@')[0])}・${esc((h.created || '').replace('T', ' ').slice(0, 16))}</span></span>${admin ? `<button class="btn small danger" data-hsdel="${esc(h.id)}">刪除</button>` : ''}</div>`).join('')
+        : '<p class="muted">尚無握手資料</p>'}
+      <div class="btn-row" style="margin-top:10px"><button class="btn" id="hsImport">匯入 TIFF</button><button class="btn" id="hsCompute">計算</button></div>`;
+  }
+
+  function bindHandshakeSection(s) {
+    s.querySelector('#hsShow')?.addEventListener('change', (e) => {
+      pref.set('handshake', e.target.checked ? '1' : '0');
+      drawHandshakes();
+    });
+    s.querySelectorAll('[data-hsdel]').forEach((b) => {
+      b.onclick = async () => {
+        if (!(await confirmBox('刪除這筆握手範圍？全隊都會移除'))) return;
+        // 離線時 Firestore 會排隊，不等伺服器回應
+        closeSheet();
+        deleteHandshake(c.id, b.dataset.hsdel).catch((e) => toast(`刪除失敗：${e.message}`, 4000));
+      };
+    });
+    s.querySelector('#hsImport')?.addEventListener('click', importHandshake);
+    s.querySelector('#hsCompute')?.addEventListener('click', computeHandshake);
+  }
+
+  const latLngText = (p) => (p ? `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}` : '');
+  // 空白 → null；看不懂 → undefined
+  const readStation = (text) => (text.trim() ? parseCoordinate(text) || undefined : null);
+
+  async function saveHandshake(entry) {
+    let online;
+    try {
+      online = await addHandshake(c.id, entry);
+    } catch (e) {
+      log.warn('握手範圍', `「${entry.name}」上傳失敗`, e.message);
+      toast(e.code === 'permission-denied' ? '上傳失敗：沒有權限，請確認帳號在成員名單內' : `上傳失敗：${e.message}`, 5000);
+      return false;
+    }
+    closeSheet();
+    toast(online ? '已上傳，全隊會自動收到' : '目前離線，已存在手機，連線後會自動上傳', online ? 2400 : 5000);
+    return true;
+  }
+
+  async function importHandshake() {
+    const file = await pickFile('.tif,.tiff,image/tiff');
+    if (!file) return;
+    const s = sheet('<h2>匯入握手範圍</h2><p class="small" id="hsMsg">讀取檔案中…</p>');
+    let r;
+    try {
+      r = await readTiff(file);
+    } catch (e) {
+      log.warn('握手範圍', `${file.name} 匯入失敗`, e.message);
+      closeSheet();
+      return toast(`匯入失敗：${e.message}`, 5000);
+    }
+    if (!s.isConnected) return;
+    s.querySelector('#hsMsg').outerHTML = `
+      <p class="muted small">${esc(file.name)}</p>
+      <div class="fld"><label for="hsName">名稱</label><input type="text" id="hsName" value="${esc(file.name.replace(/\.tiff?$/i, ''))}"></div>
+      <div class="fld"><label for="hsStation">基地台座標</label><input type="text" id="hsStation" value="${latLngText(r.center)}" placeholder="緯度, 經度 或 TWD97"></div>
+      <p class="muted small">預填的是 TIFF 的中心點（QGIS 視域分析以基地台為中心）。清空就不在地圖上標基地台。</p>
+      <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="hsSave">${icon('cloud')}儲存並上傳</button></div>`;
+    s.querySelector('#hsSave').onclick = async () => {
+      const station = readStation(s.querySelector('#hsStation').value);
+      if (station === undefined) return toast('座標格式看不懂');
+      await saveHandshake({ name: s.querySelector('#hsName').value.trim() || '握手範圍', source: 'import', station: station && { lat: station.lat, lng: station.lng }, grid: r.grid, bits: r.bits });
+    };
+  }
+
+  function computeHandshake() {
+    let dem = null;
+    const d = VIEWSHED_DEFAULTS;
+    const s = sheet(`
+      <h2>計算握手範圍</h2>
+      <p class="muted small">用 DEM 算基地台看得到的範圍（同 QGIS 視域分析）。請在電腦上操作。</p>
+      <div class="fld"><label for="hsName">名稱</label><input type="text" id="hsName" placeholder="例如：中華電信 某某基地台"></div>
+      <div class="fld"><label for="hsStation">基地台座標</label><input type="text" id="hsStation" placeholder="緯度, 經度 或 TWD97"></div>
+      <div class="fld"><label for="hsOh">觀測者高度（m）</label><input type="number" id="hsOh" value="${d.observerHeight}" min="0" step="any"></div>
+      <div class="fld"><label for="hsTh">目標高度（m）</label><input type="number" id="hsTh" value="${d.targetHeight}" min="0" step="any"></div>
+      <div class="fld"><label for="hsMd">最大距離（km）</label><input type="number" id="hsMd" value="${d.maxDistance / 1000}" min="0.1" step="any"></div>
+      <div class="fld"><button class="btn" id="hsDem">選擇 DEM 檔</button> <span class="small" id="hsDemName">尚未選擇（內政部 20 m DEM，TWD97 GeoTIFF）</span></div>
+      <p class="small" id="hsMsg"></p>
+      <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="hsRun">${icon('cloud')}計算並上傳</button></div>`);
+    s.querySelector('#hsDem').onclick = async () => {
+      const f = await pickFile('.tif,.tiff,image/tiff');
+      if (!f) return;
+      dem = f;
+      s.querySelector('#hsDemName').textContent = `${f.name}（${Math.round(f.size / 1048576)} MB）`;
+    };
+    s.querySelector('#hsRun').onclick = async () => {
+      const name = s.querySelector('#hsName').value.trim() || '握手範圍';
+      const station = readStation(s.querySelector('#hsStation').value);
+      if (!station) return toast(station === null ? '請輸入基地台座標' : '座標格式看不懂');
+      if (!dem) return toast('請先選擇 DEM 檔');
+      const params = { observerHeight: +s.querySelector('#hsOh').value, targetHeight: +s.querySelector('#hsTh').value, maxDistance: +s.querySelector('#hsMd').value * 1000 };
+      if (!(params.observerHeight >= 0 && params.targetHeight >= 0 && params.maxDistance > 0)) return toast('高度與距離請填正數');
+      const run = s.querySelector('#hsRun');
+      const msg = s.querySelector('#hsMsg');
+      run.disabled = true;
+      try {
+        const r = await computeFromDem(dem, station, params, (text) => (msg.textContent = text));
+        if (!s.isConnected) return;
+        msg.textContent = '上傳中…';
+        if (await saveHandshake({ name, source: 'compute', station: { lat: station.lat, lng: station.lng }, params, grid: r.grid, bits: r.bits })) return;
+        msg.textContent = '';
+        run.disabled = false;
+      } catch (e) {
+        log.warn('握手範圍', `「${name}」計算失敗`, e.message);
+        msg.textContent = '';
+        run.disabled = false;
+        toast(`計算失敗：${e.message}`, 5000);
+      }
+    };
+  }
 
   // 離線地圖下載
   el.querySelector('#dlBtn').onclick = async () => {
@@ -508,6 +672,10 @@ export async function render(el, app) {
 
 export function destroy() {
   releaseUrls();
+  hsUnsub?.();
+  hsUnsub = null;
+  cloudUnsub?.();
+  cloudUnsub = null;
   abort?.abort();
   unsub?.();
   unsub = null;
