@@ -84,6 +84,21 @@ test('照片大小限制、只能用自己的名義上傳、只能刪自己的',
   await assertSucceeds(deleteDoc(doc(as(MEMBER), 'cases', 'c1', 'photos', 'p1')));
 });
 
+test('握手範圍：成員可讀、可新增，只有管理員能刪除，不能修改', async () => {
+  const data = (by, n = 10) => ({ name: '台A', source: 'import', grid: { x0: 0, y0: 0, cell: 20, w: 1, h: 1 }, mask: bytes(n), by, created: 'x' });
+  const ref = (who, id = 'h1') => doc(as(who), 'cases', 'c1', 'handshakes', id);
+  await assertSucceeds(setDoc(ref(MEMBER, 'hm'), data(MEMBER)));
+  await assertFails(setDoc(ref(STRANGER, 'hs'), data(STRANGER)));
+  await assertSucceeds(setDoc(ref(ADMIN), data(ADMIN)));
+  await assertSucceeds(getDoc(ref(MEMBER)));
+  await assertFails(getDoc(ref(STRANGER)));
+  await assertFails(setDoc(ref(ADMIN, 'h2'), data(MEMBER)));
+  await assertFails(setDoc(ref(ADMIN, 'h3'), data(ADMIN, 701 * 1024)));
+  await assertFails(setDoc(ref(ADMIN), { ...data(ADMIN), name: '改名' }));
+  await assertFails(deleteDoc(ref(MEMBER)));
+  await assertSucceeds(deleteDoc(ref(ADMIN)));
+});
+
 test('使用記錄：只能寫自己的；隊員看不到別人的，管理員看得到全部', async () => {
   await assertSucceeds(setDoc(doc(as(MEMBER), 'logs', 'member-dev2'), { account: MEMBER, text: 'hi' }));
   await assertFails(setDoc(doc(as(MEMBER), 'logs', 'fake'), { account: ADMIN, text: 'hi' }));
