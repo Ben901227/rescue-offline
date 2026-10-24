@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTrackFile, toGpx } from '../js/lib/gpx.js';
+import { parseTrackFile, toGpx, slimTracks, pointCount } from '../js/lib/gpx.js';
 
 const gpx = `<?xml version="1.0"?>
 <gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
@@ -45,4 +45,20 @@ test('toGpx 匯出後可再解析', () => {
 
 test('非 GPX/KML 會丟錯', () => {
   assert.throws(() => parseTrackFile('{"a":1}'));
+});
+
+test('slimTracks：四捨五入，超過上限時抽點並保留頭尾', () => {
+  const pts = Array.from({ length: 25 }, (_, i) => [23.1234567 + i / 1000, 121.7654321, 2800.4]);
+  const r = slimTracks({ tracks: [{ name: 'A', points: pts }], waypoints: [{ name: 'W', lat: 23.12345678, lng: 121.1, ele: null }] }, 10);
+  const out = r.tracks[0].points;
+  assert.ok(out.length <= 11, `點數 ${out.length}`);
+  assert.deepEqual(out[0], [23.123457, 121.765432, 2800]);
+  assert.equal(out[out.length - 1][0], 23.147457);
+  assert.deepEqual(r.waypoints[0], { name: 'W', lat: 23.123457, lng: 121.1, ele: null });
+  assert.equal(pointCount(r), out.length);
+});
+
+test('slimTracks：沒超過上限時不抽點', () => {
+  const r = slimTracks({ tracks: [{ points: [[1, 2, null], [3, 4, 5]] }], waypoints: [] });
+  assert.deepEqual(r.tracks[0], { name: '', points: [[1, 2, null], [3, 4, 5]] });
 });

@@ -99,6 +99,20 @@ test('握手範圍：成員可讀、可新增，只有管理員能刪除，不�
   await assertSucceeds(deleteDoc(ref(ADMIN)));
 });
 
+test('航跡：點數上限、只能用自己的名義上傳、不能改、只能刪自己的', async () => {
+  const ref = (who) => doc(as(who), 'cases', 'c1', 'tracks', 't1');
+  const track = (by, pointCount = 2) => encode({ name: 'D2', data: { tracks: [{ name: '', points: [[23.9, 121.3, null], [23.91, 121.31, 2800]] }], waypoints: [] }, pointCount, by });
+  await assertFails(setDoc(ref(MEMBER), track(ADMIN)));
+  await assertFails(setDoc(ref(MEMBER), track(MEMBER, 10001)));
+  await assertFails(setDoc(ref(STRANGER), track(STRANGER)));
+  await assertSucceeds(setDoc(ref(MEMBER), track(MEMBER)));
+  await assertSucceeds(getDoc(ref(ADMIN)));
+  await assertFails(setDoc(ref(MEMBER), track(MEMBER, 3)));
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'members', 'm2@example.com'), { role: 'member' }));
+  await assertFails(deleteDoc(doc(as('m2@example.com'), 'cases', 'c1', 'tracks', 't1')));
+  await assertSucceeds(deleteDoc(ref(MEMBER)));
+});
+
 test('使用記錄：只能寫自己的；隊員看不到別人的，管理員看得到全部', async () => {
   await assertSucceeds(setDoc(doc(as(MEMBER), 'logs', 'member-dev2'), { account: MEMBER, text: 'hi' }));
   await assertFails(setDoc(doc(as(MEMBER), 'logs', 'fake'), { account: ADMIN, text: 'hi' }));

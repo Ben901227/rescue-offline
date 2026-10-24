@@ -2,6 +2,7 @@
 //   登入：Google 帳號，只要求 email；登入狀態存在手機，離線也維持。
 //   權限：Firestore 規則 + members 名單（見 firestore.rules）。
 //   資料：cases/{id}（案件）、cases/{id}/routes/{id}（路線）、cases/{id}/photos/{id}（照片）、
+//         cases/{id}/tracks/{id}（匯入的 GPX/KML 航跡）、
 //         logs/{帳號_手機代號}（使用記錄）、members/{email}（成員名單）。
 //   畫面仍讀本機 IndexedDB 的 cases：雲端有變動時，這裡把案件（含路線）同步寫回本機。
 //   離線時的寫入由 Firestore 自動排隊，上線後送出。
@@ -11,6 +12,7 @@ import { db as local, kv } from './db.js';
 import { esc, toast } from './ui.js';
 import { validateCase } from './lib/caseSchema.js';
 import { encode, decode } from './lib/fsCodec.js';
+import { slimTracks, pointCount } from './lib/gpx.js';
 import { APP_VERSION, APP_CHANNEL } from './version.js';
 import * as log from './log.js';
 import {
@@ -108,6 +110,7 @@ let app = null; // App 狀態（app.js 傳入），雲端資料變動時重新�
 const caseCache = new Map(); // caseId -> { data, routes: Map }
 let caseUnsub = null;
 const routeUnsubs = new Map();
+const trackUnsubs = new Map();
 let memberUnsub = null;
 let refreshTimer = null;
 
@@ -152,6 +155,8 @@ function stopListeners() {
   memberUnsub = null;
   routeUnsubs.forEach((u) => u());
   routeUnsubs.clear();
+  trackUnsubs.forEach((u) => u());
+  trackUnsubs.clear();
 }
 
 function listenRoutes(caseId) {
@@ -178,6 +183,26 @@ function listenRoutes(caseId) {
   });
 }
 
+// 航跡：雲端的每一份寫進本機 tracks（id 用雲端文件 id），只在這支手機的那些不動；
+// 「隱藏」是各手機自己的顯示設定，同步時保留
+function listenTracks(caseId) {
+  if (trackUnsubs.has(caseId)) return;
+  const unsub = onSnapshot(
+    collection(fs, 'cases', caseId, 'tracks'),
+    async (snap) => {
+      const prev = new Map((await local.byCase('tracks', caseId)).filter((t) => t.cloudId).map((t) => [t.cloudId, t]));
+      for (const d of snap.docs) {
+        await local.put('tracks', { ...decode(d.data()), id: d.id, cloudId: d.id, caseId, hidden: prev.get(d.id)?.hidden || false });
+        prev.delete(d.id);
+      }
+      for (const id of prev.keys()) await local.delete('tracks', id);
+      window.dispatchEvent(new CustomEvent('tracks-data', { detail: caseId }));
+    },
+    (err) => log.warn('同步', '航跡同步失敗', err.message)
+  );
+  trackUnsubs.set(caseId, unsub);
+}
+
 function startCaseListener() {
   caseUnsub = onSnapshot(
     collection(fs, 'cases'),
@@ -190,8 +215,10 @@ function startCaseListener() {
           caseCache.delete(id);
           routeUnsubs.get(id)?.();
           routeUnsubs.delete(id);
+          trackUnsubs.get(id)?.();
+          trackUnsubs.delete(id);
           const c = await local.get('cases', id);
-          if (c?._sync?.source === 'cloud') await local.delete('cases', id);
+          if (c?._sync?.source === 'cloud') await Promise.all([local.delete('cases', id), local.deleteByCase('tracks', id)]);
           scheduleRefresh();
           continue;
         }
@@ -199,6 +226,7 @@ function startCaseListener() {
         entry.data = decode(ch.doc.data());
         caseCache.set(id, entry);
         listenRoutes(id);
+        listenTracks(id);
         await writeMirror(id);
       }
       if (!snap.metadata.fromCache && state.status !== 'synced') {
@@ -312,6 +340,51 @@ export async function saveAndUpload(c) {
   }
 }
 
+// 等雲端寫入：離線時 Firestore 會排隊，不等伺服器回應
+async function settle(write, what) {
+  if (!navigator.onLine) {
+    write.then(() => log.info('上傳', `${what}已在連線後上傳`)).catch((e) => log.warn('上傳', `${what}上傳失敗`, e.message));
+    return { uploaded: false, reason: '目前離線，連線後會自動上傳' };
+  }
+  try {
+    await Promise.race([write, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))]);
+    log.info('上傳', `${what}已上傳`);
+    return { uploaded: true };
+  } catch (e) {
+    const denied = e.code === 'permission-denied';
+    log.warn('上傳', `${what}${denied ? '沒有權限上傳' : '上傳較慢，連線穩定後會自動完成'}`, e.message);
+    return { uploaded: false, denied, reason: denied ? '沒有權限上傳，請聯絡管理員' : '網路不穩，連線穩定後會自動上傳' };
+  }
+}
+
+// 把本機匯入的航跡分享給全隊（精簡點數後存到 cases/{id}/tracks）
+export async function shareTrack(t) {
+  if (!state.user) throw new Error('請先登入');
+  const data = slimTracks(t.data);
+  const body = encode({ name: t.name, data, pointCount: pointCount(data), added: t.added || new Date().toISOString(), by: email() });
+  if (JSON.stringify(body).length > 900 * 1024) throw new Error('航跡太大，無法分享');
+  const ref = doc(collection(fs, 'cases', t.caseId, 'tracks'));
+  const write = setDoc(ref, body);
+  // 先換成雲端那份，離線時地圖也會顯示為已分享
+  await local.put('tracks', { ...decode(body), id: ref.id, cloudId: ref.id, caseId: t.caseId, hidden: t.hidden || false });
+  if (!t.cloudId) await local.delete('tracks', t.id);
+  const r = await settle(write, `航跡「${t.name}」`);
+  // 被拒絕就換回本機那份，不要顯示成已分享
+  if (r.denied) await Promise.all([local.delete('tracks', ref.id), local.put('tracks', t)]);
+  return r;
+}
+
+export async function deleteTrack(t) {
+  if (!t.cloudId) return local.delete('tracks', t.id);
+  const write = deleteDoc(doc(fs, 'cases', t.caseId, 'tracks', t.cloudId));
+  await local.delete('tracks', t.id);
+  const r = await settle(write, `刪除航跡「${t.name}」`);
+  if (r.denied) {
+    await local.put('tracks', t);
+    throw new Error('只有上傳者或管理員能刪除這份航跡');
+  }
+}
+
 // 手動「同步最新資料」：重新向伺服器拿一次，並上傳使用記錄
 export async function syncNow() {
   if (!state.user) throw new Error('請先登入');
@@ -380,6 +453,7 @@ export async function deleteCase(id) {
   for (const d of (await getDocs(collection(fs, 'cases', id, 'routes'))).docs) await deleteDoc(d.ref);
   for (const d of (await getDocs(collection(fs, 'cases', id, 'photos'))).docs) await deleteDoc(d.ref);
   for (const d of (await getDocs(collection(fs, 'cases', id, 'handshakes'))).docs) await deleteDoc(d.ref);
+  for (const d of (await getDocs(collection(fs, 'cases', id, 'tracks'))).docs) await deleteDoc(d.ref);
   await deleteDoc(doc(fs, 'cases', id));
   log.info('案件', `刪除雲端案件：${id}`);
 }

@@ -129,7 +129,7 @@ function subjectCard(c) {
 function ippCard(c) {
   const i = c.ipp;
   // IPP 座標可能填在 ipp 欄位，也可能是地圖標記裡類型為 IPP 的那一個
-  const marker = c.area.markers.find((m) => m.type === 'ipp' && m.lat != null);
+  const marker = c.area.markers.find((m) => m.type === 'ipp');
   const lat = i.lat ?? marker?.lat;
   const lng = i.lng ?? marker?.lng;
   const hasCoord = lat != null && lng != null;
