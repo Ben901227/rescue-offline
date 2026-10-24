@@ -5,7 +5,7 @@ import { wgs84ToTwd97, parseCoordinate } from '../lib/twd97.js';
 import { parseTrackFile, toGpx } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
-import { saveAndUpload, state as cloud, isAdmin, onChange as onCloudChange } from '../cloud.js';
+import { saveAndUpload, shareTrack, deleteTrack, email, isAdmin, state as cloud, onChange as onCloudChange } from '../cloud.js';
 import { listPhotos, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 import * as log from '../log.js';
 import { subscribe } from '../geo.js';
@@ -23,6 +23,7 @@ let unsub = null;
 let hsUnsub = null;
 let cloudUnsub = null;
 let abort = null;
+let onTracks = null;
 
 const pref = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -185,6 +186,10 @@ export async function render(el, app) {
   }
   startHandshakes();
   cloudUnsub = onCloudChange(() => startHandshakes());
+
+  // 別人分享的航跡同步進來時重畫
+  onTracks = (e) => e.detail === c?.id && drawTracks();
+  window.addEventListener('tracks-data', onTracks);
 
   await Promise.all([drawMarkers(), drawTracks()]);
   drawPhotos();
@@ -438,14 +443,22 @@ export async function render(el, app) {
   el.querySelector('#layersBtn').onclick = () => {
     if (!c) return toast('請先匯入案件');
     const missing = markers.filter((m) => m.source === 'case' && m.lat == null);
+    // 雲端案件、已登入時，匯入的航跡會分享給全隊
+    const canShare = !!cloud.user && c._sync?.source === 'cloud';
+    const trackInfo = (t) =>
+      t.cloudId
+        ? `已分享・${esc((t.by || '').split('@')[0])}${t.pointCount != null ? `・${t.pointCount} 點` : ''}`
+        : `只在這支手機・${t.data.tracks.length} 條航跡、${t.data.waypoints.length} 個航點`;
+    const canDelete = (t) => !t.cloudId || t.by === email() || isAdmin();
     const s = sheet(`
       <h2>航跡與標記</h2>
       <div id="trackList">${
         tracks.length
-          ? tracks.map((t, i) => `<label class="check"><input type="checkbox" data-track="${t.id}" ${t.hidden ? '' : 'checked'}><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${t.data.tracks.length} 條航跡、${t.data.waypoints.length} 個航點</span></span><button class="btn small danger" data-deltrack="${t.id}">刪除</button></label>`).join('')
+          ? tracks.map((t, i) => `<label class="check"><input type="checkbox" data-track="${esc(t.id)}" ${t.hidden ? '' : 'checked'}><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span>${canShare && !t.cloudId ? `<button class="btn small" data-sharetrack="${esc(t.id)}">分享給全隊</button>` : ''}${canDelete(t) ? `<button class="btn small danger" data-deltrack="${esc(t.id)}">刪除</button>` : ''}</label>`).join('')
           : '<p class="muted">尚未匯入航跡</p>'
       }</div>
       <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="importTrack">匯入 GPX / KML</button></div>
+      <p class="muted small" style="margin-top:6px">${canShare ? '匯入的航跡會分享給全隊（點數太多時會精簡）。' : cloud.user ? '這個案件還沒上傳雲端，航跡只存在這支手機。' : '登入後匯入的航跡才會分享給全隊，目前只存在這支手機。'}</p>
       ${missing.length ? `<h3 style="margin-top:16px">座標待補</h3><ul style="margin:6px 0 0;padding-left:18px">${missing.map((m) => `<li>${esc(m.name)}${m.note ? ` <span class="muted small">${esc(m.note)}</span>` : ''}</li>`).join('')}</ul><p class="muted small" style="margin-top:6px">在地圖上長按該位置即可補上。</p>` : ''}
       <h3 style="margin-top:16px">握手範圍</h3>
       <div id="hsBox" style="margin-top:6px">${handshakeSection()}</div>
@@ -461,11 +474,13 @@ export async function render(el, app) {
       try {
         const data = parseTrackFile(await file.text());
         if (!data.tracks.length && !data.waypoints.length) throw new Error('檔案中沒有航跡或航點');
-        await db.put('tracks', { caseId: c.id, name: file.name.replace(/\.(gpx|kml)$/i, ''), data, added: new Date().toISOString() });
+        const t = { caseId: c.id, name: file.name.replace(/\.(gpx|kml)$/i, ''), data, added: new Date().toISOString() };
+        t.id = await db.put('tracks', t);
+        const r = canShare ? await shareTrack(t) : null;
         closeSheet();
         await drawTracks();
         if (trackLayer.getLayers().length) map.fitBounds(trackLayer.getBounds(), { padding: [30, 30] });
-        toast(`已匯入 ${file.name}`);
+        toast(r ? (r.uploaded ? `已匯入 ${file.name}，並分享給全隊` : `已匯入 ${file.name}；${r.reason}`) : `已匯入 ${file.name}`, r && !r.uploaded ? 4000 : 2500);
       } catch (e) {
         log.warn('航跡匯入', `${file.name} 匯入失敗`, e.message);
         toast(`匯入失敗：${e.message}`, 4000);
@@ -473,7 +488,7 @@ export async function render(el, app) {
     };
     s.querySelectorAll('[data-track]').forEach((cb) => {
       cb.onchange = async () => {
-        const t = tracks.find((x) => x.id === Number(cb.dataset.track));
+        const t = tracks.find((x) => String(x.id) === cb.dataset.track);
         t.hidden = !cb.checked;
         await db.put('tracks', t);
         drawTracks();
@@ -482,8 +497,29 @@ export async function render(el, app) {
     s.querySelectorAll('[data-deltrack]').forEach((b) => {
       b.onclick = async (e) => {
         e.preventDefault();
-        if (!(await confirmBox('刪除這份航跡？'))) return;
-        await db.delete('tracks', Number(b.dataset.deltrack));
+        const t = tracks.find((x) => String(x.id) === b.dataset.deltrack);
+        if (!(await confirmBox(t.cloudId ? '刪除這份航跡？全隊都會看不到。' : '刪除這份航跡？'))) return;
+        try {
+          await deleteTrack(t);
+        } catch (err) {
+          toast(err.message, 4000);
+        }
+        closeSheet();
+        drawTracks();
+      };
+    });
+    s.querySelectorAll('[data-sharetrack]').forEach((b) => {
+      b.onclick = async (e) => {
+        e.preventDefault();
+        const t = tracks.find((x) => String(x.id) === b.dataset.sharetrack);
+        b.disabled = true;
+        try {
+          const r = await shareTrack(t);
+          toast(r.uploaded ? `已分享「${t.name}」給全隊` : r.reason, 4000);
+        } catch (err) {
+          log.warn('航跡分享', `${t.name} 分享失敗`, err.message);
+          toast(`分享失敗：${err.message}`, 4000);
+        }
         closeSheet();
         drawTracks();
       };
@@ -679,6 +715,8 @@ export function destroy() {
   abort?.abort();
   unsub?.();
   unsub = null;
+  if (onTracks) window.removeEventListener('tracks-data', onTracks);
+  onTracks = null;
   closeSheet();
   map?.remove();
   map = null;

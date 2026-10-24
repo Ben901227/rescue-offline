@@ -119,3 +119,22 @@ ${trks}
 </gpx>
 `;
 }
+
+// 上傳雲端前精簡航跡：座標取 6 位小數（約 10 cm）、高度取整數，
+// 總點數超過上限時平均抽點（保留每段頭尾），避免超過 Firestore 單一文件 1 MB。
+export const MAX_SHARED_POINTS = 10000;
+
+export const pointCount = (data) => data.tracks.reduce((n, t) => n + t.points.length, 0);
+
+export function slimTracks(data, max = MAX_SHARED_POINTS) {
+  const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+  const total = pointCount(data);
+  const step = total > max ? total / max : 1;
+  const tracks = data.tracks.map((t) => {
+    const last = t.points.length - 1;
+    const keep = step === 1 ? t.points : t.points.filter((_, i) => i === last || Math.floor(i / step) !== Math.floor((i - 1) / step));
+    return { name: t.name || '', points: keep.map(([lat, lng, ele]) => [round(lat, 6), round(lng, 6), round(ele, 0)]) };
+  });
+  const waypoints = data.waypoints.map((w) => ({ name: w.name || '', lat: round(w.lat, 6), lng: round(w.lng, 6), ele: round(w.ele, 0) }));
+  return { tracks, waypoints };
+}
