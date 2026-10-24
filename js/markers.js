@@ -8,13 +8,19 @@ const overrideKey = (caseId) => `coords:${caseId}`;
 export async function caseMarkers(c) {
   const overrides = (await kv.get(overrideKey(c.id))) || {};
   const list = [];
-  const ippInMarkers = c.area.markers.some((m) => m.type === 'ipp');
-  if (!ippInMarkers && (c.ipp.lat != null || overrides['IPP'])) {
+  // 地圖標記裡有 IPP 類型的就用它；它沒座標時借用 IPP 欄位的座標，不另外畫一個
+  const ippMarker = c.area.markers.find((m) => m.type === 'ipp');
+  if (!ippMarker && (c.ipp.lat != null || overrides['IPP'])) {
     const o = overrides['IPP'] || c.ipp;
     list.push({ key: 'IPP', name: 'IPP 最後已知點', type: 'ipp', lat: o.lat, lng: o.lng, note: c.ipp.lastSeen, source: 'case' });
   }
   for (const m of c.area.markers) {
     const o = overrides[m.name];
+    // 「座標待補」之類的備註不再適用，改顯示最後目擊
+    if (!o && m === ippMarker && m.lat == null && c.ipp.lat != null) {
+      list.push({ key: m.name, ...m, lat: c.ipp.lat, lng: c.ipp.lng, note: c.ipp.lastSeen, patched: false, source: 'case' });
+      continue;
+    }
     list.push({ key: m.name, ...m, lat: o?.lat ?? m.lat, lng: o?.lng ?? m.lng, patched: !!o, source: 'case' });
   }
   if (c.found?.lat != null) {
