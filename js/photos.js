@@ -5,7 +5,7 @@ import { esc, pickFile, toast, ask } from './ui.js';
 import * as log from './log.js';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, Bytes } from '../vendor/firebase/firebase.js';
 
-export const KIND_LABEL = { subject: '失聯者', scene: '現場' };
+export const KIND_LABEL = { subject: '失聯者', scene: '現場', route: '路線圖' };
 const MAX_EDGE = 1280;
 const MAX_BYTES = 300 * 1024;
 const THUMB_EDGE = 320;

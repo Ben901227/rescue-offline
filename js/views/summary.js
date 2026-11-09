@@ -238,6 +238,18 @@ function areaCard(c) {
   );
 }
 
+// 當前任務：最後一個日期的分組（任務頁預設展開的那天），點進任務頁看全部
+function taskCard(c) {
+  if (!c.teams.length && !c.routes.length) return '';
+  const last = c.teams.at(-1)?.date || '';
+  const teams = c.teams.filter((t) => (t.date || '') === last);
+  return `<a class="card task-summary" href="#/tasks">
+      <h2>當前任務${last ? `　<span class="muted small">${esc(last)}</span>` : ''}<span style="margin-left:auto">${icon('tasks')}</span></h2>
+      ${teams.map((t) => `<div class="team"><b>${esc(t.name)}</b>${t.channel ? ` <span class="chip muted">${esc(t.channel)}</span>` : ''}${t.members ? `<div class="who">${esc(t.members)}</div>` : ''}${t.area ? `<div class="small">負責：${esc(t.area)}</div>` : ''}</div>`).join('')}
+      <p class="muted small" style="margin-top:6px">${c.routes.length ? `搜救路線 ${c.routes.length} 條・` : ''}點此看任務頁</p>
+    </a>`;
+}
+
 export function render(el, app) {
   const c = app.current;
   if (!c) return;
@@ -246,6 +258,7 @@ export function render(el, app) {
     <div class="stack">
       ${c.meta.notice ? `<div class="banner" role="note">${icon('alert')}<span>${esc(c.meta.notice)}</span></div>` : ''}
       ${statusCard(c)}
+      ${taskCard(c)}
       ${foundCard(c)}
       ${c.report ? fold('report', '通報事由', `<p>${nl2br(c.report)}</p>`) : ''}
       ${subjectCard(c)}
@@ -297,7 +310,7 @@ async function loadPhotos(wrap, c) {
   if (!cloud.user) return;
   const list = await listPhotos(c.id);
   const subject = list.filter((p) => p.kind === 'subject');
-  const scene = list.filter((p) => p.kind !== 'subject');
+  const scene = list.filter((p) => p.kind !== 'subject' && p.kind !== 'route');
   const sp = wrap.querySelector('#subjectPhotos');
   if (sp) {
     const [main, ...more] = subject;

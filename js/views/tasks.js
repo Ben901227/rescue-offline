@@ -3,6 +3,21 @@ import { kv } from '../db.js';
 import { icon } from '../icons.js';
 import { routeLength } from '../lib/route.js';
 import { fmtDist } from '../markers.js';
+import { state as cloud } from '../cloud.js';
+import { listPhotos, thumbsHtml, bindThumbs, releaseUrls, pickAndUpload } from '../photos.js';
+
+// 路線圖：別的 App 截的航跡／規劃圖，存成 kind=route 的照片
+async function loadRoutePhotos(el, c) {
+  const box = el.querySelector('#routePhotos');
+  if (!box) return;
+  const list = (await listPhotos(c.id)).filter((p) => p.kind === 'route');
+  box.innerHTML = thumbsHtml(list, { empty: '還沒有路線圖。可上傳其他 App 的航跡或規劃截圖。' });
+  bindThumbs(box, list);
+}
+
+export function destroy() {
+  releaseUrls();
+}
 
 const key = (c) => `checklist:${c.id}`;
 
@@ -63,11 +78,18 @@ export async function render(el, app) {
                 .join('')
             : '<p class="muted">尚未規劃路線。到「地圖」按路線按鈕，點地圖即可畫出搜救路線（離線也可以）。</p>'
         }
+        ${cloud.user ? `<h3 style="margin-top:12px">路線圖</h3><div id="routePhotos"><p class="muted small">讀取中…</p></div>
+          <div class="btn-row" style="margin-top:8px"><button type="button" class="btn small" id="addRoutePhoto">${icon('camera', { size: 18 })}上傳路線圖</button></div>` : ''}
       </section>
       <div id="checklists" class="stack"></div>
       <div class="btn-row"><a class="btn" href="#/case">編輯裝備清單</a>${has(c.checklist) ? '<button class="btn danger" id="resetBtn">重置所有勾選</button>' : ''}</div>
       <p class="muted small" style="text-align:center">勾選狀態只存在這支手機。</p>
     </div>`;
+
+  loadRoutePhotos(el, c);
+  el.querySelector('#addRoutePhoto')?.addEventListener('click', async () => {
+    if (await pickAndUpload(c.id, 'route', { caption: '' })) loadRoutePhotos(el, c);
+  });
 
   const lists = el.querySelector('#checklists');
   const draw = () => {
