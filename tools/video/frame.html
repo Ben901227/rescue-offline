@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- 教學影片的一格畫面：frame.html?i=N。手機示意圖直接取自 guide.html，改教學時影片跟著變。 -->
+<style id="guide"></style>
+<style>
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #faf7f2; font-size: 19px; }
+  body { display: flex; flex-direction: column; font-family: -apple-system, "PingFang TC", sans-serif; color: #1c1917; }
+  header { background: #c2410c; color: #fff; padding: 56px 60px 48px; }
+  header .part { font-size: 44px; font-weight: 700; opacity: .9; min-height: 1em; }
+  header h1 { font-size: 84px; line-height: 1.25; margin: 8px 0 0; }
+  main { flex: 1; display: grid; place-items: center; }
+  main figure { zoom: 2.5; }
+  main figure figcaption { font-size: 15px; color: #1c1917; }
+  main > svg { width: 760px; height: 760px; background: #fff; border-radius: 40px; padding: 30px; }
+  .card { text-align: center; font-size: 84px; font-weight: 800; line-height: 1.4; }
+  .card p { margin: 0 0 24px; }
+  .card .logo { display: block; width: 260px; height: 260px; margin: 0 auto 48px; border-radius: 56px; }
+  .card .key { display: inline-block; background: #c2410c; color: #fff; border-radius: 28px; padding: 4px 56px; }
+  .card .warn { color: #b45309; }
+  .card .ok { color: #15803d; }
+  footer { background: #1c1917; color: #fff; font-size: 66px; font-weight: 800; line-height: 1.45; padding: 48px 60px 72px; min-height: 420px; box-sizing: border-box; display: flex; align-items: center; }
+</style>
+<header><div class="part" id="part"></div><h1 id="title"></h1></header>
+<main id="main"></main>
+<footer id="sub"></footer>
+<script type="module">
+  const i = +new URLSearchParams(location.search).get('i');
+  const [script, html] = await Promise.all([
+    fetch('script.json').then((r) => r.json()),
+    fetch('../../guide.html').then((r) => r.text()),
+  ]);
+  const line = script[i];
+  const guide = new DOMParser().parseFromString(html, 'text/html');
+  document.getElementById('guide').textContent = guide.querySelector('style').textContent;
+  document.getElementById('part').textContent = line.part;
+  document.getElementById('title').textContent = line.title;
+  document.getElementById('sub').textContent = line.text;
+  const main = document.getElementById('main');
+  if (line.fig) main.append(guide.querySelectorAll(line.fig[0])[line.fig[1]]);
+  else main.innerHTML = `<div class="card">${line.card}</div>`;
+  document.body.dataset.ready = '1';
+</script>
