@@ -5,7 +5,7 @@ import { esc, pickFile, toast, ask } from './ui.js';
 import * as log from './log.js';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, Bytes } from '../vendor/firebase/firebase.js';
 
-export const KIND_LABEL = { subject: '失聯者', scene: '現場' };
+export const KIND_LABEL = { subject: '失聯者', scene: '現場', route: '路線圖' };
 const MAX_EDGE = 1280;
 const MAX_BYTES = 300 * 1024;
 const THUMB_EDGE = 320;
@@ -157,7 +157,7 @@ export function bindThumbs(container, list) {
 }
 
 // 選照片（或拍照）→ 壓縮 → 上傳；回傳是否有上傳
-export async function pickAndUpload(caseId, kind, { caption, lat = null, lng = null, camera = false } = {}) {
+export async function pickAndUpload(caseId, kind, { caption, lat = null, lng = null, camera = false, placeholder = '例如：發現腳印' } = {}) {
   let file;
   if (camera) {
     file = await new Promise((resolve) => {
@@ -172,7 +172,7 @@ export async function pickAndUpload(caseId, kind, { caption, lat = null, lng = n
     file = await pickFile('image/*');
   }
   if (!file) return false;
-  const text = await ask('照片說明（可留空）', { value: caption ?? (kind === 'subject' ? '失聯者照片' : ''), placeholder: '例如：發現腳印', ok: '上傳' });
+  const text = await ask('照片說明（可留空）', { value: caption ?? (kind === 'subject' ? '失聯者照片' : ''), placeholder, ok: '上傳' });
   if (text === null) return false;
   toast('壓縮並上傳中…', 4000);
   try {
