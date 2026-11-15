@@ -1,18 +1,27 @@
-import { esc, has, confirmBox } from '../ui.js';
+import { esc, has, confirmBox, toast } from '../ui.js';
 import { kv } from '../db.js';
 import { icon } from '../icons.js';
 import { routeLength } from '../lib/route.js';
 import { fmtDist } from '../markers.js';
 import { state as cloud } from '../cloud.js';
-import { listPhotos, thumbsHtml, bindThumbs, releaseUrls, pickAndUpload } from '../photos.js';
+import { listPhotos, deletePhoto, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 
-// 路線圖：別的 App 截的航跡／規劃圖，存成 kind=route 的照片
+// 路線圖：別的 App 截的航跡／規劃圖，存成 kind=route 的照片。每張列出說明，上傳者或管理員可刪。
+let routePhotos = [];
 async function loadRoutePhotos(el, c) {
   const box = el.querySelector('#routePhotos');
   if (!box) return;
-  const list = (await listPhotos(c.id)).filter((p) => p.kind === 'route');
-  box.innerHTML = thumbsHtml(list, { empty: '還沒有路線圖。可上傳其他 App 的航跡或規劃截圖。' });
-  bindThumbs(box, list);
+  routePhotos = (await listPhotos(c.id)).filter((p) => p.kind === 'route');
+  box.innerHTML = routePhotos.length
+    ? `<ul class="photo-admin">${routePhotos
+        .map(
+          (p) => `<li><button type="button" class="thumb" data-photo-view="${esc(p.id)}" aria-label="放大路線圖${p.caption ? `：${esc(p.caption)}` : ''}"><img src="${photoUrl(p)}" alt=""></button>
+            <span style="flex:1;min-width:0">${esc(p.caption || '（沒有說明）')}
+            <br><span class="muted small">${esc((p.created || '').slice(0, 10))}・${esc((p.by || '').split('@')[0])}</span></span>
+            <button type="button" class="btn small danger" data-photo-del="${esc(p.id)}" aria-label="刪除路線圖">${icon('x')}</button></li>`
+        )
+        .join('')}</ul>`
+    : '<p class="muted small">還沒有路線圖。可上傳其他 App 的航跡或規劃截圖。</p>';
 }
 
 export function destroy() {
@@ -88,7 +97,19 @@ export async function render(el, app) {
 
   loadRoutePhotos(el, c);
   el.querySelector('#addRoutePhoto')?.addEventListener('click', async () => {
-    if (await pickAndUpload(c.id, 'route', { caption: '' })) loadRoutePhotos(el, c);
+    if (await pickAndUpload(c.id, 'route', { caption: '', placeholder: '例如：第一組 上午' })) loadRoutePhotos(el, c);
+  });
+  el.querySelector('#routePhotos')?.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-photo-view],[data-photo-del]');
+    if (!b) return;
+    if (b.dataset.photoView) return openLightbox(routePhotos.find((p) => p.id === b.dataset.photoView));
+    if (!(await confirmBox('刪除這張路線圖？全隊都會移除。'))) return;
+    try {
+      await deletePhoto(c.id, b.dataset.photoDel);
+    } catch (err) {
+      return toast(err.code === 'permission-denied' ? '只能刪除自己上傳的路線圖（管理員可刪全部）' : `刪除失敗：${err.message}`, 5000);
+    }
+    loadRoutePhotos(el, c);
   });
 
   const lists = el.querySelector('#checklists');

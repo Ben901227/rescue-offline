@@ -2,4 +2,4 @@
 // 格式 v0.0.xx；正式版前標示為「測試版」。
 export const APP_VERSION = 'v0.0.24';
 export const APP_CHANNEL = '測試版';
-export const APP_DATE = '2026-10-24';
+export const APP_DATE = '2026-11-15';

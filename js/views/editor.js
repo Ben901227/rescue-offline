@@ -302,7 +302,7 @@ export async function render(el, app) {
     }
     const ul = root.querySelector('#photoList');
     if (!ul) return;
-    const scene = photos.filter((p) => p.kind !== 'subject');
+    const scene = photos.filter((p) => p.kind !== 'subject' && p.kind !== 'route');
     ul.innerHTML = scene.length
       ? scene
           .map(photoItem)
