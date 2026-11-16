@@ -320,7 +320,11 @@ export async function render(el, app) {
   root.addEventListener('click', async (e) => {
     const pb = e.target.closest('[data-photo-add],[data-photo-view],[data-photo-del]');
     if (!pb) return;
-    if (pb.dataset.photoView) return openLightbox(photos.find((p) => p.id === pb.dataset.photoView));
+    if (pb.dataset.photoView) {
+      const p = photos.find((x) => x.id === pb.dataset.photoView);
+      const group = (x) => (x.kind === 'subject' ? 'subject' : x.kind === 'route' ? 'route' : 'scene');
+      return p && openLightbox(p, photos.filter((x) => group(x) === group(p)));
+    }
     if (pb.dataset.photoDel) {
       if (!(await confirmBox('刪除這張照片？全隊都會移除。'))) return;
       try {

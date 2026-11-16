@@ -343,7 +343,7 @@ export async function render(el, app) {
     const node = e.popup.getElement();
     node.querySelector('[data-photo-open]')?.addEventListener('click', (ev) => {
       const p = photos.find((x) => x.id === ev.currentTarget.dataset.photoOpen);
-      if (p) openLightbox(p);
+      if (p) openLightbox(p, photos);
     });
     node.querySelector('[data-route-edit]')?.addEventListener('click', (ev) => {
       startDrawing(c.routes.find((r) => r.id === ev.currentTarget.dataset.routeEdit));

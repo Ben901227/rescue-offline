@@ -121,26 +121,122 @@ export function thumbsHtml(list, { empty = '' } = {}) {
     .join('')}</div>`;
 }
 
-// 全螢幕看照片
-export function openLightbox(p) {
+// 全螢幕看照片。list 是同一組的照片（例如全部現場照片），可以左右滑動或按方向鍵看上一張／下一張。
+export function openLightbox(p, list) {
+  if (!p) return;
+  const items = list?.length && list.some((x) => x.id === p.id) ? list : [p];
+  let i = items.findIndex((x) => x.id === p.id);
+  const multi = items.length > 1;
   const box = document.createElement('div');
   box.className = 'lightbox';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-label', '照片');
   box.innerHTML = `
-    <img src="${photoUrl(p, 'image')}" alt="${esc(p.caption || '照片')}">
-    <div class="lightbox-info">
-      ${p.caption ? `<p><b>${esc(p.caption)}</b></p>` : ''}
-      <p class="small">${esc(KIND_LABEL[p.kind] || '')}照片・${esc((p.created || '').replace('T', ' ').slice(0, 16))}・${esc(p.by || '')}</p>
+    ${multi ? '<p class="lightbox-count small" aria-live="polite"></p>' : ''}
+    <div class="lightbox-stage">
+      <img alt="">
+      ${multi ? `<button type="button" class="lightbox-nav prev" aria-label="上一張">‹</button>
+      <button type="button" class="lightbox-nav next" aria-label="下一張">›</button>` : ''}
     </div>
+    <div class="lightbox-info"></div>
     <button type="button" class="btn lightbox-close" aria-label="關閉">關閉</button>`;
+  const img = box.querySelector('img');
+  const show = (n) => {
+    i = n;
+    const cur = items[i];
+    img.src = photoUrl(cur, 'image');
+    img.alt = cur.caption || '照片';
+    box.querySelector('.lightbox-info').innerHTML = `
+      ${cur.caption ? `<p><b>${esc(cur.caption)}</b></p>` : ''}
+      <p class="small">${esc(KIND_LABEL[cur.kind] || '')}照片・${esc((cur.created || '').replace('T', ' ').slice(0, 16))}・${esc(cur.by || '')}</p>`;
+    if (!multi) return;
+    box.querySelector('.lightbox-count').textContent = `${i + 1} / ${items.length}`;
+    box.querySelector('.prev').disabled = i === 0;
+    box.querySelector('.next').disabled = i === items.length - 1;
+    // 先準備前後一張，滑過去不用等
+    [items[i - 1], items[i + 1]].forEach((x) => x && (new Image().src = photoUrl(x, 'image')));
+  };
+  const go = (d) => {
+    const n = i + d;
+    if (n < 0 || n >= items.length) return false;
+    show(n);
+    return true;
+  };
   const close = () => {
     box.remove();
     document.removeEventListener('keydown', onKey);
   };
-  const onKey = (e) => e.key === 'Escape' && close();
-  box.addEventListener('click', (e) => (e.target === box || e.target.closest('.lightbox-close')) && close());
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
+  };
+  box.addEventListener('click', (e) => {
+    if (e.target.closest('.prev')) return go(-1);
+    if (e.target.closest('.next')) return go(1);
+    if (e.target === box || e.target.closest('.lightbox-close')) close();
+  });
+
+  // 手機左右滑動：圖片跟著手指移動，放開時滑得夠遠就換張；到第一張／最後一張只會拉一點點再彈回。
+  // 兩指縮放或畫面已放大時不切換，避免跟縮放打架。
+  if (multi) {
+    let sx = 0;
+    let sy = 0;
+    let dx = 0;
+    let tracking = false;
+    let horizontal = null;
+    const zoomed = () => (window.visualViewport?.scale || 1) > 1.01;
+    const reset = () => {
+      img.style.transition = 'transform .2s ease, opacity .2s ease';
+      img.style.transform = '';
+      img.style.opacity = '';
+    };
+    box.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1 || zoomed()) {
+        if (tracking) reset();
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      horizontal = null;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      dx = 0;
+      img.style.transition = 'none';
+    }, { passive: true });
+    box.addEventListener('touchmove', (e) => {
+      if (!tracking) return;
+      if (e.touches.length !== 1) {
+        tracking = false;
+        return reset();
+      }
+      dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      if (horizontal === null && Math.abs(dx) + Math.abs(dy) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
+      if (!horizontal) return;
+      const atEdge = (dx > 0 && i === 0) || (dx < 0 && i === items.length - 1);
+      const shift = atEdge ? dx / 4 : dx;
+      img.style.transform = `translateX(${shift}px)`;
+      img.style.opacity = String(1 - Math.min(Math.abs(shift) / window.innerWidth, 0.5));
+    }, { passive: true });
+    const end = () => {
+      if (!tracking) return;
+      tracking = false;
+      const far = horizontal && Math.abs(dx) > Math.min(60, window.innerWidth * 0.15);
+      if (far && go(dx < 0 ? 1 : -1)) {
+        // 新照片從滑動的方向進來
+        img.style.transition = 'none';
+        img.style.transform = `translateX(${dx < 0 ? 40 : -40}px)`;
+        img.style.opacity = '0.4';
+        requestAnimationFrame(() => requestAnimationFrame(reset));
+      } else reset();
+    };
+    box.addEventListener('touchend', end);
+    box.addEventListener('touchcancel', end);
+  }
+
+  show(i);
   document.addEventListener('keydown', onKey);
   document.body.append(box);
   box.querySelector('.lightbox-close').focus();
@@ -152,7 +248,7 @@ export function bindThumbs(container, list) {
     const b = e.target.closest('[data-photo]');
     if (!b) return;
     const p = list.find((x) => x.id === b.dataset.photo);
-    if (p) openLightbox(p);
+    if (p) openLightbox(p, list);
   });
 }
 

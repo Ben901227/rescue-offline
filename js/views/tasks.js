@@ -102,7 +102,7 @@ export async function render(el, app) {
   el.querySelector('#routePhotos')?.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-photo-view],[data-photo-del]');
     if (!b) return;
-    if (b.dataset.photoView) return openLightbox(routePhotos.find((p) => p.id === b.dataset.photoView));
+    if (b.dataset.photoView) return openLightbox(routePhotos.find((p) => p.id === b.dataset.photoView), routePhotos);
     if (!(await confirmBox('刪除這張路線圖？全隊都會移除。'))) return;
     try {
       await deletePhoto(c.id, b.dataset.photoDel);
