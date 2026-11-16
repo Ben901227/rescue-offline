@@ -28,6 +28,18 @@ export function formatReport(entries, info) {
 // 由 User-Agent 推出簡短的裝置描述，不含可識別個人的資訊
 export function describeDevice(ua) {
   const os = /iPhone|iPad|iPod/.test(ua) ? `iOS ${(ua.match(/OS (\d+)[_.](\d+)/) || []).slice(1).join('.')}`.trim() : /Android (\d+(\.\d+)?)/.test(ua) ? `Android ${ua.match(/Android (\d+(\.\d+)?)/)[1]}` : /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : '其他';
-  const br = /CriOS|Chrome\//.test(ua) && !/Edg\//.test(ua) ? 'Chrome' : /Edg\//.test(ua) ? 'Edge' : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '瀏覽器';
+  const br =
+    /SamsungBrowser/.test(ua) ? '三星瀏覽器'
+    : /HeyTapBrowser|OppoBrowser/.test(ua) ? 'OPPO 瀏覽器'
+    : /MiuiBrowser|XiaoMi/.test(ua) ? '小米瀏覽器'
+    : /Line\//.test(ua) ? 'LINE 內建瀏覽器'
+    : /FBAN|FBAV|Instagram/.test(ua) ? 'FB／IG 內建瀏覽器'
+    : /; wv\)/.test(ua) ? 'App 內建瀏覽器'
+    : /Edg|EdgA\//.test(ua) ? 'Edge'
+    : /CriOS|Chrome\//.test(ua) ? 'Chrome'
+    : /Firefox|FxiOS/.test(ua) ? 'Firefox'
+    : /Safari\//.test(ua) ? 'Safari'
+    : /iPhone|iPad|iPod/.test(ua) ? 'Safari（主畫面）'
+    : '瀏覽器';
   return `${os} ${br}`;
 }

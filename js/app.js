@@ -139,7 +139,7 @@ const SAFE_RERENDER = ['summary', 'tasks', 'cases', 'list'];
 window.addEventListener('cloud-data', () => SAFE_RERENDER.includes(currentTab()) && route({ keepScroll: true }));
 let lastCloud = '';
 cloud.onChange((s) => {
-  const key = `${s.user?.email}|${s.role}|${s.status}`;
+  const key = `${s.user?.email}|${s.role}|${s.status}|${cloud.loginMsg}`;
   if (key === lastCloud) return;
   lastCloud = key;
   if (currentTab() === 'cases') route({ keepScroll: true });

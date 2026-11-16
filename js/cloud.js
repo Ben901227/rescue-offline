@@ -44,56 +44,93 @@ const setState = (patch) => {
 export const email = () => state.user?.email?.toLowerCase() || null;
 export const isAdmin = () => state.role === 'admin';
 
-// ---------- Google 登入（GIS 取得 token → Firebase 登入） ----------
-const GIS_SRC = 'https://accounts.google.com/gsi/client';
-let gisPromise = null;
-let tokenClient = null;
-let pending = null;
+// ---------- Google 登入（整頁跳到 Google → 帶 token 回來 → Firebase 登入） ----------
+// 不用彈出視窗：Android 從主畫面開啟時，彈出視窗會變成另一個瀏覽器分頁，
+// token 傳不回 App，只看到空白的 Google 頁面（OPPO、三星等手機都會）。
+// 跳轉網址必須加在 Google Cloud OAuth 用戶端的「已授權的重新導向 URI」。
+const OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const PENDING_KEY = 'loginPending'; // localStorage：{ state, back, at }
+const standalone = () => matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+const loginEnv = () => `${log.deviceName()}・${standalone() ? '主畫面' : '瀏覽器'}`;
+export const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
-function loadGis() {
-  gisPromise ??= new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = GIS_SRC;
-    s.async = true;
-    s.onload = resolve;
-    s.onerror = () => {
-      gisPromise = null;
-      reject(new Error('無法載入 Google 登入（需要網路）'));
-    };
-    document.head.append(s);
-  });
-  return gisPromise;
-}
+const readPending = () => {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) || 'null');
+  } catch {
+    return null;
+  }
+};
+const clearPending = () => {
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* 存不了就算了 */
+  }
+};
 
-// 頁面開啟時先載好，按下登入時才能直接跳出視窗（不被擋）
-export async function prepare() {
-  if (!navigator.onLine || tokenClient) return;
-  await loadGis();
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: 'openid email profile',
-    // 不要把以前（Drive 版）授權過的雲端硬碟權限一起帶進來
-    include_granted_scopes: false,
-    callback: (res) => (res.error ? pending?.reject(new Error(res.error_description || res.error)) : pending?.resolve(res.access_token)),
-    error_callback: (err) =>
-      pending?.reject(new Error(err.type === 'popup_closed' ? '已取消登入' : err.type === 'popup_failed_to_open' ? '登入視窗被瀏覽器擋住，請允許此網站開啟彈出視窗後再按一次' : err.message || '登入失敗')),
-  });
-}
+// 這次開啟是不是從 Google 登入頁跳回來的。模組載入時就處理，避免 token 留在網址上、
+// 也避免路由把 #access_token=… 當成頁面。
+export let loginMsg = '';
+const redirectResult = (() => {
+  const h = location.hash.slice(1);
+  if (!/(^|&)(access_token|error)=/.test(h)) return null;
+  const p = new URLSearchParams(h);
+  const pending = readPending();
+  clearPending();
+  history.replaceState(null, '', location.pathname + location.search + (pending?.back || '#/cases'));
+  if (!pending || p.get('state') !== pending.state) return { error: '登入資料不符，請再按一次「以 Google 登入」' };
+  if (p.get('error')) return { error: p.get('error') === 'access_denied' ? '已取消登入' : `Google 登入失敗：${p.get('error')}` };
+  return { token: p.get('access_token'), took: Date.now() - pending.at };
+})();
 
-// 必須在點擊事件中同步呼叫（第一步就跳出視窗）
-export function signIn() {
-  if (!navigator.onLine) return Promise.reject(new Error('需要網路才能登入'));
-  if (!tokenClient) return Promise.reject(new Error('Google 登入尚未就緒，請稍候再按一次'));
-  const tokenP = new Promise((resolve, reject) => {
-    pending = { resolve, reject };
-    tokenClient.requestAccessToken({ prompt: '' });
-  });
-  return tokenP.then(async (accessToken) => {
-    const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(null, accessToken));
-    log.info('登入', '已登入', cred.user.email);
+async function finishRedirect() {
+  if (!redirectResult) {
+    // 按了登入卻沒帶結果回來（在 Google 頁按返回、或卡住後重開 App）
+    const pending = readPending();
+    if (pending) {
+      clearPending();
+      log.warn('登入', '登入沒有完成（沒有從 Google 回到 App）', `${Math.round((Date.now() - pending.at) / 1000)} 秒前按登入・${loginEnv()}`);
+    }
+    return;
+  }
+  if (redirectResult.error) {
+    loginMsg = redirectResult.error;
+    log.warn('登入', '登入失敗', `${redirectResult.error}・${loginEnv()}`);
+    emit();
+    return;
+  }
+  try {
+    const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(null, redirectResult.token));
+    log.info('登入', '已登入', `${cred.user.email}・${Math.round(redirectResult.took / 1000)} 秒・${loginEnv()}`);
     kv.set('cloudLast', { email: cred.user.email, at: new Date().toISOString() }).catch(() => {});
-    return cred.user;
-  });
+  } catch (e) {
+    loginMsg = `登入失敗：${e.message}`;
+    log.warn('登入', '登入失敗（Firebase）', `${e.code || ''} ${e.message}・${loginEnv()}`);
+    emit();
+  }
+}
+
+// 整頁跳到 Google 登入。成功的話頁面會離開，之後由 finishRedirect 接手。
+export async function signIn() {
+  if (!navigator.onLine) throw new Error('需要網路才能登入');
+  const stateTok = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ state: stateTok, back: location.hash || '#/cases', at: Date.now() }));
+  } catch {
+    throw new Error('手機無法暫存登入資料（可能是無痕模式），請用一般模式開啟');
+  }
+  const url = `${OAUTH_URL}?${new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri(),
+    response_type: 'token',
+    scope: 'openid email profile',
+    include_granted_scopes: 'false', // 不要把以前（Drive 版）授權過的雲端硬碟權限一起帶進來
+    state: stateTok,
+  })}`;
+  await log.info('登入', '前往 Google 登入頁', loginEnv()); // 先寫完再離開頁面
+  loginMsg = '';
+  location.assign(url);
 }
 
 export async function signOut({ wipe = true } = {}) {
@@ -287,6 +324,16 @@ export function start(appState) {
   window.addEventListener('online', () => {
     if (state.user) maybeUploadLogs(true);
   });
+  finishRedirect();
+  // 在 Google 頁按返回時，手機可能直接還原原本的畫面（不重新載入）
+  addEventListener('pageshow', (e) => {
+    if (!e.persisted || !readPending()) return;
+    const pending = readPending();
+    clearPending();
+    loginMsg = '登入沒有完成，請再按一次「以 Google 登入」';
+    log.warn('登入', '登入沒有完成（從 Google 頁返回）', `${Math.round((Date.now() - pending.at) / 1000)} 秒前按登入・${loginEnv()}`);
+    emit();
+  });
 }
 
 // ---------- 寫入 ----------
@@ -467,7 +514,7 @@ export function cloudCardHtml() {
     return `<h2>雲端同步</h2>
       <p class="small">用 Google 帳號登入，取得你有權限的案件。登入時只會分享你的 email，<b>不會存取你的雲端硬碟</b>。</p>
       <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="cloudLogin">以 Google 登入</button></div>
-      <p class="muted small" id="cloudMsg" style="margin-top:8px"></p>`;
+      <p class="small" id="cloudMsg" style="margin-top:8px;color:var(--danger)">${esc(loginMsg)}</p>`;
   }
   const statusText = {
     connecting: '連線中…',
@@ -483,19 +530,32 @@ export function cloudCardHtml() {
 }
 
 export function bindCloudCard(card, onDone) {
-  prepare().catch(() => {});
   const msg = () => card.querySelector('#cloudMsg');
   card.querySelector('#cloudLogin')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
-    const p = signIn(); // 同步呼叫，避免登入視窗被擋
     btn.disabled = true;
-    msg().textContent = '登入中…';
+    msg().style.color = 'var(--muted)';
+    msg().textContent = '前往 Google 登入頁…';
+    // 20 秒還沒離開這頁，就是沒跳過去（頁面離開或被暫存時取消計時）
+    const timer = setTimeout(() => {
+      msg().style.color = 'var(--danger)';
+      msg().textContent = '沒有跳到 Google 登入頁，請檢查網路後再按一次';
+      log.warn('登入', '按登入 20 秒後仍未跳到 Google', loginEnv());
+      btn.disabled = false;
+    }, 20000);
+    addEventListener('pagehide', () => clearTimeout(timer), { once: true });
+    addEventListener('pageshow', () => {
+      btn.disabled = false;
+      msg().style.color = 'var(--danger)';
+      msg().textContent = loginMsg;
+    }, { once: true });
     try {
-      await p;
-      onDone?.();
+      await signIn();
     } catch (err) {
+      clearTimeout(timer);
+      msg().style.color = 'var(--danger)';
       msg().textContent = err.message;
-      log.warn('登入', '登入失敗', err.message);
+      log.warn('登入', '登入失敗', `${err.message}・${loginEnv()}`);
       btn.disabled = false;
     }
   });

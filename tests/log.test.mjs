@@ -19,4 +19,8 @@ test('formatReport 含裝置資訊表頭', () => {
 test('describeDevice', () => {
   assert.equal(describeDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Version/18.1 Mobile/15E148 Safari/604.1'), 'iOS 18.1 Safari');
   assert.equal(describeDevice('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'), 'Android 14 Chrome');
+  assert.equal(describeDevice('Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/125.0 Mobile Safari/537.36'), 'Android 15 三星瀏覽器');
+  assert.equal(describeDevice('Mozilla/5.0 (Linux; U; Android 15; zh-tw; CPH2701) AppleWebKit/537.36 Chrome/115.0 Mobile Safari/537.36 HeyTapBrowser/45.0'), 'Android 15 OPPO 瀏覽器');
+  assert.equal(describeDevice('Mozilla/5.0 (Linux; Android 14; K; wv) AppleWebKit/537.36 Version/4.0 Chrome/130.0 Mobile Safari/537.36 Line/14.0'), 'Android 14 LINE 內建瀏覽器');
+  assert.equal(describeDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'), 'iOS 18.1 Safari（主畫面）');
 });

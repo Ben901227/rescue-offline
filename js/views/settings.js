@@ -1,4 +1,5 @@
-import { esc, toast, confirmBox } from '../ui.js';
+import { esc, toast, confirmBox, shareText } from '../ui.js';
+import { reportText } from '../log.js';
 import { icon } from '../icons.js';
 import { APP_VERSION, APP_CHANNEL, APP_DATE } from '../version.js';
 import { checkUpdate, applyUpdate } from '../update.js';
@@ -36,6 +37,11 @@ export async function render(el, app) {
         <p id="verStatus" class="small" style="margin-top:4px">檢查中…</p>
         <div class="btn-row" style="margin-top:10px"><button class="btn" id="verCheck">重新檢查</button><button class="btn primary hidden" id="verUpdate">立即更新</button></div>
       </section>
+      <section class="card" id="logCard">
+        <h2>使用記錄</h2>
+        <p class="small">App 出問題時（例如登不進去），按下面的按鈕，把記錄貼給管理員。記錄只有錯誤與操作結果，不含案件內容。</p>
+        <div class="btn-row" style="margin-top:10px"><button class="btn" id="logShare">複製／分享使用記錄</button></div>
+      </section>
       <a class="btn" style="width:100%" href="guide.html">${icon('help')}使用教學</a>
       <p class="muted small" style="text-align:center"><a href="#/list">← 回案件目錄</a></p>
     </div>`;
@@ -45,6 +51,7 @@ export async function render(el, app) {
     toast('已登出');
     app.go('cases');
   };
+  el.querySelector('#logShare').onclick = async () => shareText(await reportText(cloud.user?.email || null));
   const verStatus = el.querySelector('#verStatus');
   const verUpdate = el.querySelector('#verUpdate');
   const runCheck = async () => {
