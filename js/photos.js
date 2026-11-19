@@ -166,6 +166,7 @@ export function openLightbox(p, list) {
   const close = () => {
     box.remove();
     document.removeEventListener('keydown', onKey);
+    if (!document.querySelector('.lightbox')) document.documentElement.classList.remove('lightbox-open');
   };
   const onKey = (e) => {
     if (e.key === 'Escape') close();
@@ -178,6 +179,22 @@ export function openLightbox(p, list) {
     if (e.target === box || e.target.closest('.lightbox-close')) close();
   });
 
+  // 單指拖動不讓後面的頁面跟著捲（iOS 會穿過全螢幕的遮罩捲動底下的文字）。
+  // 手指只是輕點時會有幾 px 的抖動，那時不能擋，否則瀏覽器不會送出點擊，「關閉」會按不動。
+  // 兩指縮放、或已經放大要移動畫面時照常交給瀏覽器。
+  const zoomed = () => (window.visualViewport?.scale || 1) > 1.01;
+  let tx = 0;
+  let ty = 0;
+  box.addEventListener('touchstart', (e) => {
+    tx = e.touches[0].clientX;
+    ty = e.touches[0].clientY;
+  }, { passive: true });
+  box.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1 || zoomed() || !e.cancelable) return;
+    const moved = Math.abs(e.touches[0].clientX - tx) + Math.abs(e.touches[0].clientY - ty);
+    if (moved > 10) e.preventDefault();
+  }, { passive: false });
+
   // 手機左右滑動：圖片跟著手指移動，放開時滑得夠遠就換張；到第一張／最後一張只會拉一點點再彈回。
   // 兩指縮放或畫面已放大時不切換，避免跟縮放打架。
   if (multi) {
@@ -186,7 +203,6 @@ export function openLightbox(p, list) {
     let dx = 0;
     let tracking = false;
     let horizontal = null;
-    const zoomed = () => (window.visualViewport?.scale || 1) > 1.01;
     const reset = () => {
       img.style.transition = 'transform .2s ease, opacity .2s ease';
       img.style.transform = '';
@@ -238,6 +254,7 @@ export function openLightbox(p, list) {
 
   show(i);
   document.addEventListener('keydown', onKey);
+  document.documentElement.classList.add('lightbox-open');
   document.body.append(box);
   box.querySelector('.lightbox-close').focus();
 }

@@ -347,8 +347,10 @@ details.fold[open] > .fold-body { margin-top: 10px; }
 .photo-admin li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .photo-admin li:first-child { border-top: 0; }
 .photo-admin .thumb { width: 64px; flex: none; }
-.lightbox { position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px); gap: 10px; }
-.lightbox-stage { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; touch-action: pan-y pinch-zoom; }
+/* 看照片時鎖住後面的頁面，滑動只換照片，不會捲到後面的文字 */
+html.lightbox-open, html.lightbox-open body { overflow: hidden; overscroll-behavior: none; }
+.lightbox { touch-action: pinch-zoom; overscroll-behavior: contain; position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px); gap: 10px; }
+.lightbox-stage { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; }
 .lightbox img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; will-change: transform; user-select: none; -webkit-user-drag: none; }
 .lightbox-count { color: #d6d3d1; margin: 0; font-variant-numeric: tabular-nums; }
 .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border: 0; border-radius: 10px; background: rgba(0,0,0,.45); color: #fff; font-size: 2rem; line-height: 1; cursor: pointer; }
