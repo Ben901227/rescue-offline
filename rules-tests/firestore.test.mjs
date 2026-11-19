@@ -99,7 +99,7 @@ test('握手範圍：成員可讀、可新增，只有管理員能刪除，不�
   await assertSucceeds(deleteDoc(ref(ADMIN)));
 });
 
-test('航跡：點數上限、只能用自己的名義上傳、不能改、只能刪自己的', async () => {
+test('航跡：點數上限、只能用自己的名義上傳、只能改顏色、只能刪自己的', async () => {
   const ref = (who) => doc(as(who), 'cases', 'c1', 'tracks', 't1');
   const track = (by, pointCount = 2) => encode({ name: 'D2', data: { tracks: [{ name: '', points: [[23.9, 121.3, null], [23.91, 121.31, 2800]] }], waypoints: [] }, pointCount, by });
   await assertFails(setDoc(ref(MEMBER), track(ADMIN)));
@@ -108,6 +108,12 @@ test('航跡：點數上限、只能用自己的名義上傳、不能改、只�
   await assertSucceeds(setDoc(ref(MEMBER), track(MEMBER)));
   await assertSucceeds(getDoc(ref(ADMIN)));
   await assertFails(setDoc(ref(MEMBER), track(MEMBER, 3)));
+  // 顏色：隊員都能改，只能改顏色、格式要對
+  await assertSucceeds(setDoc(ref(MEMBER), { color: '#2563eb' }, { merge: true }));
+  await assertSucceeds(setDoc(ref(ADMIN), { color: '#E11D48' }, { merge: true }));
+  await assertFails(setDoc(ref(MEMBER), { color: 'red' }, { merge: true }));
+  await assertFails(setDoc(ref(MEMBER), { color: '#2563eb', name: '改名' }, { merge: true }));
+  await assertFails(setDoc(ref(STRANGER), { color: '#2563eb' }, { merge: true }));
   await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'members', 'm2@example.com'), { role: 'member' }));
   await assertFails(deleteDoc(doc(as('m2@example.com'), 'cases', 'c1', 'tracks', 't1')));
   await assertSucceeds(deleteDoc(ref(MEMBER)));

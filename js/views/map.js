@@ -5,7 +5,7 @@ import { wgs84ToTwd97, parseCoordinate } from '../lib/twd97.js';
 import { parseTrackFile, toGpx, mergeTracks } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
-import { saveAndUpload, shareTrack, deleteTrack, email, isAdmin, state as cloud, onChange as onCloudChange } from '../cloud.js';
+import { saveAndUpload, shareTrack, deleteTrack, setTrackColor, email, isAdmin, state as cloud, onChange as onCloudChange } from '../cloud.js';
 import { listPhotos, photoUrl, openLightbox, releaseUrls, pickAndUpload } from '../photos.js';
 import * as log from '../log.js';
 import { subscribe } from '../geo.js';
@@ -16,6 +16,8 @@ import { createHandshakeLayer } from '../handshakeLayer.js';
 import { VIEWSHED_DEFAULTS } from '../lib/viewshed.js';
 
 const TRACK_COLORS = ['#e11d48', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2'];
+// 可以自己挑的航跡顏色（前 6 個是預設輪流用的）
+const TRACK_PALETTE = [...TRACK_COLORS, '#facc15', '#ec4899', '#84cc16', '#ffffff'];
 const MAX_TILES = 5000;
 
 let map = null;
@@ -445,16 +447,14 @@ export async function render(el, app) {
     const missing = markers.filter((m) => m.source === 'case' && m.lat == null);
     // 雲端案件、已登入時，匯入的航跡會分享給全隊
     const canShare = !!cloud.user && c._sync?.source === 'cloud';
-    const trackInfo = (t) =>
-      t.cloudId
-        ? `已分享・${esc((t.by || '').split('@')[0])}${t.pointCount != null ? `・${t.pointCount} 點` : ''}`
-        : `只在這支手機・${t.data.tracks.length} 條航跡、${t.data.waypoints.length} 個航點`;
+    const trackInfo = (t) => (t.cloudId ? `已分享・${esc((t.by || '').split('@')[0])}` : '只在這支手機');
+    const trackColor = (t) => t.color || TRACK_COLORS[tracks.indexOf(t) % TRACK_COLORS.length];
     const canDelete = (t) => !t.cloudId || t.by === email() || isAdmin();
     const s = sheet(`
       <h2>航跡與標記</h2>
       <div id="trackList">${
         tracks.length
-          ? tracks.map((t, i) => `<label class="check"><input type="checkbox" data-track="${esc(t.id)}" ${t.hidden ? '' : 'checked'}><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span>${canShare && !t.cloudId ? `<button class="btn small" data-sharetrack="${esc(t.id)}">分享給全隊</button>` : ''}${canDelete(t) ? `<button class="btn small danger" data-deltrack="${esc(t.id)}">刪除</button>` : ''}</label>`).join('')
+          ? tracks.map((t) => `<label class="check"><input type="checkbox" data-track="${esc(t.id)}" ${t.hidden ? '' : 'checked'}><button type="button" class="track-swatch" data-trackcolor="${esc(t.id)}" style="background:${trackColor(t)}" aria-label="更換「${esc(t.name)}」的顏色" title="更換顏色"></button><span style="flex:1;min-width:0">${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span>${canShare && !t.cloudId ? `<button class="btn small" data-sharetrack="${esc(t.id)}">分享給全隊</button>` : ''}<button type="button" class="btn small" data-dltrack="${esc(t.id)}" aria-label="下載「${esc(t.name)}」GPX" title="下載 GPX">${icon('download')}</button>${canDelete(t) ? `<button class="btn small danger" data-deltrack="${esc(t.id)}">刪除</button>` : ''}</label>`).join('')
           : '<p class="muted">尚未匯入航跡</p>'
       }</div>
       <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="importTrack">匯入 GPX / KML</button>${tracks.length >= 2 ? '<button class="btn" id="mergeTrack">合併航跡</button>' : ''}</div>
@@ -504,7 +504,7 @@ export async function render(el, app) {
       const m = sheet(`
         <h2>合併航跡</h2>
         <p class="muted small">勾選要合併的航跡（至少兩份），會照清單順序併成一份新的航跡檔。</p>
-        <div id="mergeList" style="margin-top:6px">${tracks.map((t, i) => `<label class="check"><input type="checkbox" data-merge="${esc(t.id)}"><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span></label>`).join('')}</div>
+        <div id="mergeList" style="margin-top:6px">${tracks.map((t) => `<label class="check"><input type="checkbox" data-merge="${esc(t.id)}"><span style="flex:1"><b style="color:${trackColor(t)}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span></label>`).join('')}</div>
         <label style="display:block;margin-top:10px">新航跡名稱<input type="text" id="mergeName" autocomplete="off" placeholder="例如：第一組 全天"></label>
         <label class="check" style="border:0;margin-top:6px"><input type="checkbox" id="mergeDel"><span>合併後刪除原本的航跡<br><span class="muted small">別人分享的航跡不會被刪（管理員除外）</span></span></label>
         <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="mergeOk" disabled>合併</button><button class="btn" id="mergeCancel">取消</button></div>
@@ -557,6 +557,34 @@ export async function render(el, app) {
         t.hidden = !cb.checked;
         await db.put('tracks', t);
         drawTracks();
+      };
+    });
+    // 下載：存成 GPX（已分享的是精簡過的那份）
+    s.querySelectorAll('[data-dltrack]').forEach((b) => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        const t = tracks.find((x) => String(x.id) === b.dataset.dltrack);
+        downloadFile(`${t.name}.gpx`, toGpx({ name: t.name, tracks: t.data.tracks, waypoints: t.data.waypoints }), 'application/gpx+xml');
+      };
+    });
+    // 顏色：已分享的航跡全隊一起換
+    s.querySelectorAll('[data-trackcolor]').forEach((b) => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        const t = tracks.find((x) => String(x.id) === b.dataset.trackcolor);
+        const now = trackColor(t);
+        const cs = sheet(`
+          <h2>航跡顏色</h2>
+          <p class="muted small">${esc(t.name)}${t.cloudId ? '・全隊的地圖會一起換' : ''}</p>
+          <fieldset class="fld swatches"><legend class="sr-only">顏色</legend>${TRACK_PALETTE.map((col, i) => `<label><input type="radio" name="tkColor" value="${col}" ${col === now ? 'checked' : ''}><span style="background:${col}"></span><span class="sr-only">顏色 ${i + 1}</span></label>`).join('')}</fieldset>`);
+        cs.querySelectorAll('[name="tkColor"]').forEach((r) => {
+          r.onchange = async () => {
+            closeSheet();
+            const res = await setTrackColor(t, r.value);
+            if (!res.uploaded) toast(res.reason, 4000);
+            drawTracks();
+          };
+        });
       };
     });
     s.querySelectorAll('[data-deltrack]').forEach((b) => {

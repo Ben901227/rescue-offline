@@ -301,6 +301,7 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .route-bar .route-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .route-bar .btn { flex: none; }
 .swatches { border: 0; padding: 0; margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.track-swatch { flex: none; width: 28px; height: 28px; margin: 0 4px; padding: 0; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
 .swatches legend { font-size: .9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
 .swatches label { width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; }
 .swatches input { position: absolute; opacity: 0; }

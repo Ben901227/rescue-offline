@@ -408,7 +408,7 @@ async function settle(write, what) {
 export async function shareTrack(t) {
   if (!state.user) throw new Error('請先登入');
   const data = slimTracks(t.data);
-  const body = encode({ name: t.name, data, pointCount: pointCount(data), added: t.added || new Date().toISOString(), by: email() });
+  const body = encode({ name: t.name, data, pointCount: pointCount(data), added: t.added || new Date().toISOString(), by: email(), ...(t.color ? { color: t.color } : {}) });
   if (JSON.stringify(body).length > 900 * 1024) throw new Error('航跡太大，無法分享');
   const ref = doc(collection(fs, 'cases', t.caseId, 'tracks'));
   const write = setDoc(ref, body);
@@ -418,6 +418,15 @@ export async function shareTrack(t) {
   const r = await settle(write, `航跡「${t.name}」`);
   // 被拒絕就換回本機那份，不要顯示成已分享
   if (r.denied) await Promise.all([local.delete('tracks', ref.id), local.put('tracks', t)]);
+  return r;
+}
+
+// 航跡顏色：已分享的改雲端那份（全隊一起換），只在這支手機的改本機
+export async function setTrackColor(t, color) {
+  await local.put('tracks', { ...t, color });
+  if (!t.cloudId) return { uploaded: true };
+  const r = await settle(setDoc(doc(fs, 'cases', t.caseId, 'tracks', t.cloudId), { color }, { merge: true }), `航跡「${t.name}」顏色`);
+  if (r.denied) await local.put('tracks', t);
   return r;
 }
 

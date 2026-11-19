@@ -74,7 +74,7 @@ service cloud.firestore {
         allow delete: if isAdmin();
       }
 
-      // 匯入的航跡：上傳前已精簡到 1 萬點內；不能修改，只有上傳者或管理員能刪
+      // 匯入的航跡：上傳前已精簡到 1 萬點內；只能改顏色，只有上傳者或管理員能刪
       match /tracks/{trackId} {
         allow read: if isMember();
         allow create: if isMember()
@@ -83,6 +83,10 @@ service cloud.firestore {
           && request.resource.data.pointCount is int
           && request.resource.data.pointCount <= 10000
           && request.resource.data.by == myEmail();
+        allow update: if isMember()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['color'])
+          && request.resource.data.color is string
+          && request.resource.data.color.matches('^#[0-9a-fA-F]{6}$');
         allow delete: if isAdmin() || (isMember() && resource.data.by == myEmail());
       }
     }
