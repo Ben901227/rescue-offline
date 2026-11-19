@@ -163,10 +163,14 @@ export function openLightbox(p, list) {
     show(n);
     return true;
   };
+  const scrollY0 = window.scrollY;
+  // 電腦用滑鼠滾輪時，後面的頁面也不要跟著捲
+  box.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
   const close = () => {
     box.remove();
     document.removeEventListener('keydown', onKey);
-    if (!document.querySelector('.lightbox')) document.documentElement.classList.remove('lightbox-open');
+    // 關掉後回到原本看的位置（保險：萬一瀏覽器在看照片時捲動了頁面）
+    if (Math.abs(window.scrollY - scrollY0) > 1) window.scrollTo(window.scrollX, scrollY0);
   };
   const onKey = (e) => {
     if (e.key === 'Escape') close();
@@ -254,7 +258,6 @@ export function openLightbox(p, list) {
 
   show(i);
   document.addEventListener('keydown', onKey);
-  document.documentElement.classList.add('lightbox-open');
   document.body.append(box);
   box.querySelector('.lightbox-close').focus();
 }
