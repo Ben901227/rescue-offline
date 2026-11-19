@@ -146,5 +146,28 @@ cloud.onChange((s) => {
 });
 cloud.start(app);
 
+// 診斷：從主畫面開啟時，畫面比螢幕矮很多（iOS 下方出現空白）就記一筆，方便之後找原因
+{
+  const seen = new Set();
+  const check = () => {
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    const portrait = matchMedia('(orientation: portrait)').matches;
+    const gap = Math.round(screen.height - window.innerHeight);
+    if (!standalone || !portrait || gap < 20 || seen.has(gap)) return;
+    seen.add(gap);
+    const vv = window.visualViewport;
+    log.warn('畫面', `畫面比螢幕矮 ${gap}px`, `screen ${screen.width}x${screen.height}・inner ${window.innerWidth}x${window.innerHeight}・visual ${Math.round(vv?.width || 0)}x${Math.round(vv?.height || 0)} offsetTop ${Math.round(vv?.offsetTop || 0)}・scrollY ${Math.round(window.scrollY)}・${location.hash}`);
+  };
+  let t;
+  const later = () => {
+    clearTimeout(t);
+    t = setTimeout(check, 800);
+  };
+  window.visualViewport?.addEventListener('resize', later);
+  window.addEventListener('resize', later);
+  window.addEventListener('hashchange', later);
+  later();
+}
+
 if (!app.current && !/^#\/(cases|list)/.test(location.hash)) app.go(app.cases.length ? 'list' : 'cases');
 else await route();

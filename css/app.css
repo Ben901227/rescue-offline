@@ -273,6 +273,8 @@ textarea { min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-
   display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
 }
+/* iOS 有時（例如收起鍵盤後）畫面高度變矮，分頁列下方會露出一條空白；用分頁列的顏色往下補滿 */
+.tabbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 100vh; background: var(--surface); pointer-events: none; }
 .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .75rem; }
 .tabbar .ico { width: 24px; height: 24px; }
 .tabbar a { min-height: 48px; }

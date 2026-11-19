@@ -214,6 +214,7 @@ function blankRow(path) {
 export async function render(el, app) {
   const params = new URLSearchParams(location.hash.split('?')[1] || '');
   const editId = params.get('id');
+  const backTo = params.get('from'); // 從摘要頁哪一區的「編輯」進來，存檔後回到那裡
   const template = await fetch('cases/template.json').then((r) => r.json()).catch(() => ({ meta: {}, checklist: [] }));
   const original = editId ? await db.get('cases', editId) : null;
   if (editId && !original) {
@@ -464,7 +465,8 @@ export async function render(el, app) {
       await kv.del(DRAFT_KEY);
       await app.select(out.id);
       toast(r.uploaded ? '已儲存並上傳到 Drive' : r.reason, r.uploaded ? 2400 : 6000);
-      app.go('summary');
+      if (backTo) location.hash = `#/summary?at=${encodeURIComponent(backTo)}`;
+      else app.go('summary');
     }
   });
 

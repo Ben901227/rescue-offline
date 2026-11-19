@@ -39,7 +39,7 @@ let currentId = '';
 
 function fold(key, title, body, { cls = '', style = '', extra = '' } = {}) {
   const open = folds[key] !== false;
-  const edit = EDIT_SEC[key] ? `<a class="btn small fold-edit" href="#/edit?id=${encodeURIComponent(currentId)}&sec=${EDIT_SEC[key]}" aria-label="編輯「${title}」">編輯</a>` : '';
+  const edit = EDIT_SEC[key] ? `<a class="btn small fold-edit" href="#/edit?id=${encodeURIComponent(currentId)}&sec=${EDIT_SEC[key]}&from=${key}" aria-label="編輯「${title}」">編輯</a>` : '';
   return `
     <details class="card fold ${cls}" data-fold="${key}" ${style ? `style="${style}"` : ''} ${open ? 'open' : ''}>
       <summary><h2>${title}${extra}</h2>${edit}</summary>
@@ -274,7 +274,21 @@ export function render(el, app) {
     </div>`;
 
   const wrap = el.firstElementChild;
-  loadPhotos(wrap, c);
+  // 從某一區的「編輯」存檔回來時，捲回那一區（照片載入後版面會變，再對一次）
+  const at = new URLSearchParams(location.hash.split('?')[1] || '').get('at');
+  const backTo = () => {
+    const d = at && wrap.querySelector(`details[data-fold="${CSS.escape(at)}"]`);
+    if (!d) return;
+    d.open = true;
+    d.scrollIntoView({ block: 'start' });
+  };
+  if (at) {
+    history.replaceState(null, '', '#/summary');
+    requestAnimationFrame(backTo);
+  }
+  let moved = false;
+  if (at) addEventListener('touchstart', () => (moved = true), { once: true, passive: true });
+  loadPhotos(wrap, c).then(() => at && !moved && backTo());
   // 全部展開／收合
   wrap.insertAdjacentHTML(
     'afterbegin',
