@@ -127,6 +127,17 @@ export const MAX_SHARED_POINTS = 10000;
 export const pointCount = (data) => data.tracks.reduce((n, t) => n + t.points.length, 0);
 
 export function slimTracks(data, max = MAX_SHARED_POINTS) {
+  // 每段都會多保留尾點，抽完可能還多幾點：超過就把預算扣掉多出來的再抽一次
+  let budget = max;
+  let out = slimOnce(data, budget);
+  while (pointCount(out) > max && budget > 1) {
+    budget -= pointCount(out) - max;
+    out = slimOnce(data, Math.max(1, budget));
+  }
+  return out;
+}
+
+function slimOnce(data, max) {
   const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
   const total = pointCount(data);
   const step = total > max ? total / max : 1;
@@ -137,4 +148,13 @@ export function slimTracks(data, max = MAX_SHARED_POINTS) {
   });
   const waypoints = data.waypoints.map((w) => ({ name: w.name || '', lat: round(w.lat, 6), lng: round(w.lng, 6), ele: round(w.ele, 0) }));
   return { tracks, waypoints };
+}
+
+// 把幾份航跡檔併成一份：每份的航跡段、航點照順序接起來；
+// 沒有名字的航跡段用原本檔名命名，合併後在地圖上點線還認得出來源。
+export function mergeTracks(files) {
+  return {
+    tracks: files.flatMap((f) => f.data.tracks.map((t) => ({ ...t, name: t.name || f.name || '' }))),
+    waypoints: files.flatMap((f) => f.data.waypoints),
+  };
 }

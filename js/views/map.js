@@ -1,8 +1,8 @@
-import { esc, sheet, closeSheet, toast, copyText, pickFile, fmtTime, downloadFile, ask, confirmBox } from '../ui.js';
+import { esc, sheet, closeSheet, toast, copyText, pickFile, pickFiles, fmtTime, downloadFile, ask, confirmBox } from '../ui.js';
 import { icon } from '../icons.js';
 import { db } from '../db.js';
 import { wgs84ToTwd97, parseCoordinate } from '../lib/twd97.js';
-import { parseTrackFile, toGpx } from '../lib/gpx.js';
+import { parseTrackFile, toGpx, mergeTracks } from '../lib/gpx.js';
 import { routeLength, ROUTE_COLORS } from '../lib/route.js';
 import { validateCase } from '../lib/caseSchema.js';
 import { saveAndUpload, shareTrack, deleteTrack, email, isAdmin, state as cloud, onChange as onCloudChange } from '../cloud.js';
@@ -457,8 +457,8 @@ export async function render(el, app) {
           ? tracks.map((t, i) => `<label class="check"><input type="checkbox" data-track="${esc(t.id)}" ${t.hidden ? '' : 'checked'}><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span>${canShare && !t.cloudId ? `<button class="btn small" data-sharetrack="${esc(t.id)}">分享給全隊</button>` : ''}${canDelete(t) ? `<button class="btn small danger" data-deltrack="${esc(t.id)}">刪除</button>` : ''}</label>`).join('')
           : '<p class="muted">尚未匯入航跡</p>'
       }</div>
-      <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="importTrack">匯入 GPX / KML</button></div>
-      <p class="muted small" style="margin-top:6px">${canShare ? '匯入的航跡會分享給全隊（點數太多時會精簡）。' : cloud.user ? '這個案件還沒上傳雲端，航跡只存在這支手機。' : '登入後匯入的航跡才會分享給全隊，目前只存在這支手機。'}</p>
+      <div class="btn-row" style="margin-top:10px"><button class="btn primary" id="importTrack">匯入 GPX / KML</button>${tracks.length >= 2 ? '<button class="btn" id="mergeTrack">合併航跡</button>' : ''}</div>
+      <p class="muted small" style="margin-top:6px">可以一次選多個檔案。${canShare ? '匯入的航跡會分享給全隊（點數太多時會精簡）。' : cloud.user ? '這個案件還沒上傳雲端，航跡只存在這支手機。' : '登入後匯入的航跡才會分享給全隊，目前只存在這支手機。'}</p>
       ${missing.length ? `<h3 style="margin-top:16px">座標待補</h3><ul style="margin:6px 0 0;padding-left:18px">${missing.map((m) => `<li>${esc(m.name)}${m.note ? ` <span class="muted small">${esc(m.note)}</span>` : ''}</li>`).join('')}</ul><p class="muted small" style="margin-top:6px">在地圖上長按該位置即可補上。</p>` : ''}
       <h3 style="margin-top:16px">握手範圍</h3>
       <div id="hsBox" style="margin-top:6px">${handshakeSection()}</div>
@@ -468,24 +468,89 @@ export async function render(el, app) {
         <span style="display:inline-flex;gap:6px;align-items:center"><span style="display:inline-block;width:14px;height:14px;padding:0;background:rgba(255,0,0,.61);border-radius:2px"></span>握手範圍（基地台看得到的地方）</span></div>
     `);
     bindHandshakeSection(s);
+    // 匯入（可一次選多個）：每個檔案各存一份航跡，能分享就分享
     s.querySelector('#importTrack').onclick = async () => {
-      const file = await pickFile('.gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml');
-      if (!file) return;
-      try {
-        const data = parseTrackFile(await file.text());
-        if (!data.tracks.length && !data.waypoints.length) throw new Error('檔案中沒有航跡或航點');
-        const t = { caseId: c.id, name: file.name.replace(/\.(gpx|kml)$/i, ''), data, added: new Date().toISOString() };
-        t.id = await db.put('tracks', t);
-        const r = canShare ? await shareTrack(t) : null;
-        closeSheet();
-        await drawTracks();
-        if (trackLayer.getLayers().length) map.fitBounds(trackLayer.getBounds(), { padding: [30, 30] });
-        toast(r ? (r.uploaded ? `已匯入 ${file.name}，並分享給全隊` : `已匯入 ${file.name}；${r.reason}`) : `已匯入 ${file.name}`, r && !r.uploaded ? 4000 : 2500);
-      } catch (e) {
-        log.warn('航跡匯入', `${file.name} 匯入失敗`, e.message);
-        toast(`匯入失敗：${e.message}`, 4000);
+      const files = await pickFiles('.gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml');
+      if (!files.length) return;
+      closeSheet();
+      const ok = [];
+      const failed = [];
+      const notShared = [];
+      for (const file of files) {
+        try {
+          const data = parseTrackFile(await file.text());
+          if (!data.tracks.length && !data.waypoints.length) throw new Error('檔案中沒有航跡或航點');
+          const t = { caseId: c.id, name: file.name.replace(/\.(gpx|kml)$/i, ''), data, added: new Date().toISOString() };
+          t.id = await db.put('tracks', t);
+          ok.push(file.name);
+          const r = canShare ? await shareTrack(t) : null;
+          if (r && !r.uploaded) notShared.push(r.reason);
+        } catch (e) {
+          log.warn('航跡匯入', `${file.name} 匯入失敗`, e.message);
+          failed.push(`${file.name}：${e.message}`);
+        }
       }
+      await drawTracks();
+      if (ok.length && trackLayer.getLayers().length) map.fitBounds(trackLayer.getBounds(), { padding: [30, 30] });
+      const head = files.length === 1 ? `已匯入 ${ok[0] || ''}` : `已匯入 ${ok.length} 個檔案`;
+      const parts = [];
+      if (ok.length) parts.push(canShare && !notShared.length ? `${head}，並分享給全隊` : head);
+      if (notShared.length) parts.push(notShared[0]);
+      if (failed.length) parts.push(files.length === 1 ? `匯入失敗：${failed[0].split('：').slice(1).join('：')}` : `${failed.length} 個失敗（${failed.join('；')}）`);
+      toast(parts.join('；'), failed.length || notShared.length ? 5000 : 2500);
     };
+    // 合併：勾選幾份航跡併成一份新的；可選擇刪掉原本的（只刪得掉自己能刪的）
+    s.querySelector('#mergeTrack')?.addEventListener('click', () => {
+      const m = sheet(`
+        <h2>合併航跡</h2>
+        <p class="muted small">勾選要合併的航跡（至少兩份），會照清單順序併成一份新的航跡檔。</p>
+        <div id="mergeList" style="margin-top:6px">${tracks.map((t, i) => `<label class="check"><input type="checkbox" data-merge="${esc(t.id)}"><span style="flex:1"><b style="color:${t.color || TRACK_COLORS[i % TRACK_COLORS.length]}">━</b> ${esc(t.name)}<br><span class="muted small">${trackInfo(t)}</span></span></label>`).join('')}</div>
+        <label style="display:block;margin-top:10px">新航跡名稱<input type="text" id="mergeName" autocomplete="off" placeholder="例如：第一組 全天"></label>
+        <label class="check" style="border:0;margin-top:6px"><input type="checkbox" id="mergeDel"><span>合併後刪除原本的航跡<br><span class="muted small">別人分享的航跡不會被刪（管理員除外）</span></span></label>
+        <div class="btn-row" style="margin-top:12px"><button class="btn primary" id="mergeOk" disabled>合併</button><button class="btn" id="mergeCancel">取消</button></div>
+        ${canShare ? '<p class="muted small" style="margin-top:6px">合併後的航跡會分享給全隊（點數太多時會精簡）。</p>' : ''}`);
+      const picked = () => tracks.filter((t) => m.querySelector(`[data-merge="${CSS.escape(String(t.id))}"]`).checked);
+      const nameInput = m.querySelector('#mergeName');
+      m.querySelectorAll('[data-merge]').forEach((cb) => {
+        cb.onchange = () => {
+          const sel = picked();
+          m.querySelector('#mergeOk').disabled = sel.length < 2;
+          if (!nameInput.dataset.touched) nameInput.value = sel.length ? `${sel[0].name}（合併）` : '';
+        };
+      });
+      nameInput.oninput = () => (nameInput.dataset.touched = '1');
+      m.querySelector('#mergeCancel').onclick = closeSheet;
+      m.querySelector('#mergeOk').onclick = async () => {
+        const sel = picked();
+        if (sel.length < 2) return;
+        const name = nameInput.value.trim() || `${sel[0].name}（合併）`;
+        const delOld = m.querySelector('#mergeDel').checked;
+        m.querySelector('#mergeOk').disabled = true;
+        try {
+          const t = { caseId: c.id, name, data: mergeTracks(sel), added: new Date().toISOString() };
+          t.id = await db.put('tracks', t);
+          const r = canShare ? await shareTrack(t) : null;
+          // 分享失敗時不刪原本的，免得雲端那幾份不見、新的又只在這支手機
+          const kept = [];
+          if (delOld && (!r || r.uploaded)) {
+            for (const o of sel) {
+              if (!canDelete(o)) { kept.push(o.name); continue; }
+              try { await deleteTrack(o); } catch { kept.push(o.name); }
+            }
+          }
+          closeSheet();
+          await drawTracks();
+          const msg = [`已合併 ${sel.length} 份成「${name}」${r?.uploaded ? '，並分享給全隊' : ''}`];
+          if (r && !r.uploaded) msg.push(r.reason);
+          if (kept.length) msg.push(`這些不是你分享的，沒有刪：${kept.join('、')}`);
+          toast(msg.join('；'), msg.length > 1 ? 5000 : 2500);
+        } catch (e) {
+          log.warn('航跡合併', `${name} 合併失敗`, e.message);
+          toast(`合併失敗：${e.message}`, 4000);
+          m.querySelector('#mergeOk').disabled = false;
+        }
+      };
+    });
     s.querySelectorAll('[data-track]').forEach((cb) => {
       cb.onchange = async () => {
         const t = tracks.find((x) => String(x.id) === cb.dataset.track);

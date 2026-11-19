@@ -106,6 +106,18 @@ export function pickFile(accept) {
   });
 }
 
+// 一次選多個檔案；沒選回傳空陣列
+export function pickFiles(accept) {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.multiple = true;
+    input.onchange = () => resolve([...input.files]);
+    input.click();
+  });
+}
+
 export const fmtTime = (d = new Date()) =>
   `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 

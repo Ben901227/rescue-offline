@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTrackFile, toGpx, slimTracks, pointCount } from '../js/lib/gpx.js';
+import { parseTrackFile, toGpx, slimTracks, pointCount, mergeTracks } from '../js/lib/gpx.js';
 
 const gpx = `<?xml version="1.0"?>
 <gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
@@ -51,7 +51,7 @@ test('slimTracks：四捨五入，超過上限時抽點並保留頭尾', () => {
   const pts = Array.from({ length: 25 }, (_, i) => [23.1234567 + i / 1000, 121.7654321, 2800.4]);
   const r = slimTracks({ tracks: [{ name: 'A', points: pts }], waypoints: [{ name: 'W', lat: 23.12345678, lng: 121.1, ele: null }] }, 10);
   const out = r.tracks[0].points;
-  assert.ok(out.length <= 11, `點數 ${out.length}`);
+  assert.ok(out.length <= 10, `點數 ${out.length}`);
   assert.deepEqual(out[0], [23.123457, 121.765432, 2800]);
   assert.equal(out[out.length - 1][0], 23.147457);
   assert.deepEqual(r.waypoints[0], { name: 'W', lat: 23.123457, lng: 121.1, ele: null });
@@ -61,4 +61,23 @@ test('slimTracks：四捨五入，超過上限時抽點並保留頭尾', () => {
 test('slimTracks：沒超過上限時不抽點', () => {
   const r = slimTracks({ tracks: [{ points: [[1, 2, null], [3, 4, 5]] }], waypoints: [] });
   assert.deepEqual(r.tracks[0], { name: '', points: [[1, 2, null], [3, 4, 5]] });
+});
+
+test('slimTracks：抽點後絕不超過上限（規則只收 1 萬點內）', () => {
+  for (const n of [10001, 20004, 20011, 33333, 59999]) {
+    const one = { tracks: [{ points: Array.from({ length: n }, (_, i) => [i / 1e5, 0, 0]) }], waypoints: [] };
+    assert.ok(pointCount(slimTracks(one)) <= 10000, `單段 ${n}`);
+    const many = { tracks: Array.from({ length: 7 }, (_, k) => ({ points: Array.from({ length: n + k }, (_, i) => [i / 1e5, k, 0]) })), waypoints: [] };
+    assert.ok(pointCount(slimTracks(many)) <= 10000, `七段 ${n}`);
+  }
+});
+
+test('mergeTracks：航跡段、航點照順序接起來，沒名字的段用檔名', () => {
+  const r = mergeTracks([
+    { name: '甲', data: { tracks: [{ name: '', points: [[1, 2, 3]] }], waypoints: [{ name: 'W1', lat: 1, lng: 2, ele: null }] } },
+    { name: '乙', data: { tracks: [{ name: '第二段', points: [[4, 5, null]] }], waypoints: [] } },
+  ]);
+  assert.deepEqual(r.tracks.map((t) => t.name), ['甲', '第二段']);
+  assert.equal(r.waypoints.length, 1);
+  assert.equal(pointCount(r), 2);
 });
